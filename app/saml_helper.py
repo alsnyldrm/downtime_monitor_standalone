@@ -1,20 +1,25 @@
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 from fastapi import Request
-from app.config import SAML_SETTINGS, FEDERATION_METADATA_URL
+from app.config import SAML_SETTINGS, FEDERATION_METADATA_URL, APP_URL
 import httpx
 import xml.etree.ElementTree as ET
 import os
+import time
 import logging
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 _idp_cert_cache = None
+_idp_cert_cache_time = 0
+_IDP_CERT_TTL = 3600  # 1 saat
 
 
 async def fetch_idp_certificate():
-    global _idp_cert_cache
-    if _idp_cert_cache:
+    global _idp_cert_cache, _idp_cert_cache_time
+    now = time.time()
+    if _idp_cert_cache and (now - _idp_cert_cache_time) < _IDP_CERT_TTL:
         return _idp_cert_cache
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -30,18 +35,29 @@ async def fetch_idp_certificate():
                 cert_el = root.find(".//md:IDPSSODescriptor/md:KeyDescriptor/ds:KeyInfo/ds:X509Data/ds:X509Certificate", ns)
             if cert_el is not None and cert_el.text:
                 _idp_cert_cache = cert_el.text.strip()
+                _idp_cert_cache_time = now
                 return _idp_cert_cache
     except Exception as e:
         logger.error(f"IdP sertifika alınamadı: {e}")
+    # Cache'de eski sertifika varsa onu dön
+    if _idp_cert_cache:
+        return _idp_cert_cache
     return ""
 
 
+# APP_URL'den izin verilen host'u çıkar
+_ALLOWED_HOST = urlparse(APP_URL).netloc
+
+
 def prepare_saml_request(request: Request):
+    # Host header injection koruması - sadece APP_URL'den gelen host kabul edilir
+    http_host = _ALLOWED_HOST
+
     url_data = {
-        "https": "on" if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https" else "off",
-        "http_host": request.headers.get("x-forwarded-host", request.headers.get("host", "localhost")),
+        "https": "on",
+        "http_host": http_host,
         "script_name": request.url.path,
-        "server_port": request.headers.get("x-forwarded-port", str(request.url.port or 443)),
+        "server_port": "443",
         "get_data": dict(request.query_params),
         "post_data": {}
     }

@@ -84,8 +84,8 @@ async def dns_check(request: Request):
             infos = socket.getaddrinfo(host, None)
             results["A"] = list(set(i[4][0] for i in infos if i[0] == socket.AF_INET))
             results["AAAA"] = list(set(i[4][0] for i in infos if i[0] == socket.AF_INET6))
-        except Exception as e:
-            return JSONResponse({"error": str(e)})
+        except Exception:
+            return JSONResponse({"error": "DNS çözümleme başarısız"})
 
     # Reverse DNS
     try:
@@ -147,8 +147,8 @@ async def ping_check(request: Request):
         return JSONResponse({"error": "Zaman aşımı (35sn)"})
     except FileNotFoundError:
         return JSONResponse({"error": "ping komutu bulunamadı"})
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except Exception:
+        return JSONResponse({"error": "Ping işlemi başarısız"})
 
 
 # ---------- 3. Port Tarama ----------
@@ -241,10 +241,10 @@ async def ssl_check(request: Request):
             "days_left": days_left, "sans": sans[:20],
             "status": status,
         })
-    except ssl.SSLCertVerificationError as e:
-        return JSONResponse({"host": host, "valid": False, "error": str(e)})
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except ssl.SSLCertVerificationError:
+        return JSONResponse({"host": host, "valid": False, "error": "SSL sertifika doğrulama hatası"})
+    except Exception:
+        return JSONResponse({"error": "SSL kontrolü başarısız"})
 
 
 # ---------- 5. HTTP Başlıkları ----------
@@ -293,8 +293,8 @@ async def http_headers(request: Request):
             "headers": headers, "history": history,
             "elapsed_ms": elapsed, "security": security,
         })
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except Exception:
+        return JSONResponse({"error": "HTTP başlık sorgusu başarısız"})
 
 
 # ---------- 6. Traceroute ----------
@@ -323,8 +323,8 @@ async def traceroute(request: Request):
         return JSONResponse({"error": "Traceroute zaman aşımı (60sn)"})
     except FileNotFoundError:
         return JSONResponse({"error": "traceroute komutu bulunamadı"})
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except Exception:
+        return JSONResponse({"error": "Traceroute başarısız"})
 
 
 # ---------- 7. WHOIS Sorgu ----------
@@ -369,8 +369,8 @@ async def whois_check(request: Request):
         return JSONResponse({"error": "whois komutu bulunamadı"})
     except asyncio.TimeoutError:
         return JSONResponse({"error": "WHOIS zaman aşımı"})
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except Exception:
+        return JSONResponse({"error": "WHOIS sorgusu başarısız"})
 
 
 # ---------- 8. Subnet Hesaplayıcı ----------
@@ -442,8 +442,8 @@ async def geoip_check(request: Request):
             "org": data.get("org"),
             "as": data.get("as"),
         })
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except Exception:
+        return JSONResponse({"error": "GeoIP sorgusu başarısız"})
 
 
 # ---------- 10. Reverse DNS ----------
@@ -464,8 +464,8 @@ async def reverse_dns(request: Request):
             ipv4 = list(set(i[4][0] for i in infos if i[0] == socket.AF_INET))
             ipv6 = list(set(i[4][0] for i in infos if i[0] == socket.AF_INET6))
             results["forward"] = {"ipv4": ipv4, "ipv6": ipv6}
-        except Exception as e:
-            results["forward"] = {"error": str(e)}
+        except Exception:
+            results["forward"] = {"error": "Çözümleme başarısız"}
 
         # Reverse: IP → hostname
         try:
@@ -476,8 +476,8 @@ async def reverse_dns(request: Request):
                 "aliases": hostinfo[1],
                 "ip": ip,
             }
-        except Exception as e:
-            results["reverse"] = {"error": str(e)}
+        except Exception:
+            results["reverse"] = {"error": "Ters DNS çözümleme başarısız"}
 
         # CNAME check
         try:
@@ -504,8 +504,8 @@ async def reverse_dns(request: Request):
             results["mx"] = []
 
         return JSONResponse({"host": host, "results": results})
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except Exception:
+        return JSONResponse({"error": "Reverse DNS sorgusu başarısız"})
 
 
 # ---------- 11. Banner Grab ----------
@@ -638,5 +638,5 @@ async def http_performance(request: Request):
             "redirects": redirect_chain,
             "redirect_count": len(redirect_chain),
         })
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
+    except Exception:
+        return JSONResponse({"error": "Redirect analizi başarısız"})

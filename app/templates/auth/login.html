@@ -83,19 +83,6 @@
                         Microsoft ile Giriş Yap
                     </a>
                     <div class="login-info"><p>Üniversite Microsoft hesabınızla güvenli bir şekilde giriş yapacaksınız.</p></div>
-                    <div class="additional-links"><a onclick="document.getElementById('sso-view').style.display='none';document.getElementById('local-view').style.display='block';">Yerel Giriş (Sistem Yöneticisi)</a></div>
-                </div>
-                <div id="local-view" style="display:none;width:100%;text-align:left;">
-                    <div class="login-header" style="margin-bottom:20px;"><h2>Yerel Yönetici Girişi</h2></div>
-                    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-                    <form method="post" action="/login">
-                        <label style="font-size:14px;color:var(--primary);font-weight:600;margin-bottom:5px;display:block;">Kullanıcı Adı</label>
-                        <input type="text" name="username" class="custom-input" placeholder="Admin kullanıcı adı" required autocomplete="username">
-                        <label style="font-size:14px;color:var(--primary);font-weight:600;margin-bottom:5px;margin-top:10px;display:block;">Şifre</label>
-                        <input type="password" name="password" class="custom-input" placeholder="Şifreniz" required autocomplete="current-password">
-                        <input type="submit" value="Giriş Yap" class="custom-submit-btn" style="margin-top:5px;">
-                    </form>
-                    <div class="additional-links" style="margin-top:20px;"><a onclick="document.getElementById('local-view').style.display='none';document.getElementById('sso-view').style.display='block';">← SSO Girişine Dön</a></div>
                 </div>
             </div>
         </div>

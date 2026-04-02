@@ -103,29 +103,8 @@ class GroupBulkSettingsRequest(BaseModel):
 
 @router.post("/auth/login")
 async def api_login(req: LoginRequest):
-    db = _db()
-    try:
-        user = db.query(User).filter(
-            User.username == req.username,
-            User.is_active == True
-        ).first()
-        if not user or not user.password_hash:
-            raise HTTPException(status_code=401, detail="Geçersiz kullanıcı adı veya şifre")
-        if not bcrypt.verify(req.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Geçersiz kullanıcı adı veya şifre")
-        token = create_token(user.id)
-        return {
-            "token": token,
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "display_name": user.display_name,
-                "email": user.email,
-                "role": user.role.value,
-            }
-        }
-    finally:
-        db.close()
+    # Local login devre dışı - sadece SAML üzerinden giriş yapılabilir
+    raise HTTPException(status_code=403, detail="Yerel giriş devre dışı. Lütfen SAML/Microsoft ile giriş yapın.")
 
 
 @router.get("/auth/me")

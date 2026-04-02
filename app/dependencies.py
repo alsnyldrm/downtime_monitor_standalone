@@ -47,25 +47,17 @@ def require_editor(request: Request):
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    EXEMPT_PATHS = {"/login", "/saml/acs", "/saml/login", "/saml/metadata", "/saml/sls", "/static", "/favicon.ico", "/api/v1"}
+    # Exact paths and prefix paths separated for safe matching
+    EXEMPT_EXACT = {"/login", "/saml/acs", "/saml/login", "/saml/metadata", "/saml/sls", "/favicon.ico"}
+    EXEMPT_PREFIX = {"/static/", "/api/v1/"}
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        if any(path.startswith(p) for p in self.EXEMPT_PATHS):
+        if path in self.EXEMPT_EXACT or any(path.startswith(p) for p in self.EXEMPT_PREFIX):
             return await call_next(request)
 
         user_id = request.session.get("user_id")
         if not user_id:
             return RedirectResponse(url="/login", status_code=303)
-
-        # Check must_change_password
-        if path != "/change-password" and path != "/logout":
-            db = SessionLocal()
-            try:
-                user = db.query(User).filter(User.id == user_id).first()
-                if user and user.must_change_password:
-                    return RedirectResponse(url="/change-password", status_code=303)
-            finally:
-                db.close()
 
         return await call_next(request)

@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from passlib.hash import bcrypt
 from datetime import datetime, timezone, timedelta
 import jwt as pyjwt
 from app.database import get_db
@@ -20,6 +19,9 @@ templates = Jinja2Templates(directory="app/templates")
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 72
+
+# İzin verilen email domain'leri
+ALLOWED_EMAIL_DOMAINS = {"fbu.edu.tr"}
 
 def _create_mobile_token(user_id: int) -> str:
     payload = {
@@ -39,20 +41,17 @@ async def login_page(request: Request):
     return templates.TemplateResponse("auth/login.html", {"request": request, "error": error})
 
 
+# Local login devre dışı - sadece SAML
 @router.post("/login")
-async def login_post(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == username, User.auth_provider == AuthProvider.local, User.is_active == True).first()
-    if not user or not bcrypt.verify(password, user.password_hash):
-        return templates.TemplateResponse("auth/login.html", {"request": request, "error": "Geçersiz kullanıcı adı veya şifre"})
-    request.session["user_id"] = user.id
-    if user.must_change_password:
-        return RedirectResponse(url="/change-password", status_code=303)
-    return RedirectResponse(url="/", status_code=303)
+async def login_post(request: Request):
+    return RedirectResponse(url="/login?error=Yerel+giriş+devre+dışı.+Lütfen+Microsoft+ile+giriş+yapın.", status_code=303)
 
 
 @router.get("/saml/login")
 async def saml_login(request: Request):
     cert = await fetch_idp_certificate()
+    if not cert:
+        return RedirectResponse(url="/login?error=IdP+sertifikası+alınamadı", status_code=303)
     settings = copy.deepcopy(SAML_SETTINGS)
     settings["idp"]["x509cert"] = cert
     req = prepare_saml_request(request)
@@ -64,6 +63,8 @@ async def saml_login(request: Request):
 @router.get("/api/v1/auth/saml/login")
 async def saml_login_mobile(request: Request):
     cert = await fetch_idp_certificate()
+    if not cert:
+        return HTMLResponse(_mobile_error_page("IdP sertifikası alınamadı"))
     settings = copy.deepcopy(SAML_SETTINGS)
     settings["idp"]["x509cert"] = cert
     req = prepare_saml_request(request)
@@ -72,9 +73,19 @@ async def saml_login_mobile(request: Request):
     return RedirectResponse(url=sso_url)
 
 
+def _is_allowed_email(email: str) -> bool:
+    """Email domain'inin izin verilen listede olup olmadığını kontrol et."""
+    if not email or "@" not in email:
+        return False
+    domain = email.rsplit("@", 1)[1].lower()
+    return domain in ALLOWED_EMAIL_DOMAINS
+
+
 @router.post("/saml/acs")
 async def saml_acs(request: Request, db: Session = Depends(get_db)):
     cert = await fetch_idp_certificate()
+    if not cert:
+        return RedirectResponse(url="/login?error=IdP+sertifikası+alınamadı", status_code=303)
     settings = copy.deepcopy(SAML_SETTINGS)
     settings["idp"]["x509cert"] = cert
     req = prepare_saml_request(request)
@@ -102,6 +113,13 @@ async def saml_acs(request: Request, db: Session = Depends(get_db)):
         if is_mobile:
             return HTMLResponse(_mobile_error_page("Email bilgisi alınamadı"))
         return RedirectResponse(url="/login?error=Email+bilgisi+alınamadı", status_code=303)
+
+    # Domain kısıtlaması
+    if not _is_allowed_email(email):
+        logger.warning(f"İzin verilmeyen domain ile giriş denemesi: {email}")
+        if is_mobile:
+            return HTMLResponse(_mobile_error_page("Bu email domain'i ile giriş yapılamaz"))
+        return RedirectResponse(url="/login?error=Bu+email+domaini+ile+giriş+yapılamaz", status_code=303)
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
@@ -178,32 +196,3 @@ async def saml_metadata(request: Request):
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
-
-
-@router.get("/change-password", response_class=HTMLResponse)
-async def change_password_page(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse("auth/change_password.html", {"request": request, "user": user})
-
-
-@router.post("/change-password")
-async def change_password_post(
-    request: Request,
-    new_password: str = Form(...),
-    confirm_password: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    user_session = get_current_user(request)
-    if not user_session:
-        return RedirectResponse(url="/login", status_code=303)
-    if new_password != confirm_password:
-        return templates.TemplateResponse("auth/change_password.html", {"request": request, "user": user_session, "error": "Şifreler eşleşmiyor"})
-    if len(new_password) < 6:
-        return templates.TemplateResponse("auth/change_password.html", {"request": request, "user": user_session, "error": "Şifre en az 6 karakter olmalı"})
-    user = db.query(User).filter(User.id == user_session.id).first()
-    user.password_hash = bcrypt.hash(new_password)
-    user.must_change_password = False
-    db.commit()
-    return RedirectResponse(url="/", status_code=303)
