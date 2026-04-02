@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+{% block title %}Ağ Araçları - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <div>
+        <h2 style="margin:0;">Ağ Araçları</h2>
+        <small style="color:var(--text-muted);">DNS, Ping, Port, SSL, HTTP, Traceroute, WHOIS, Subnet, GeoIP, Reverse DNS, Banner, HTTP Perf</small>
+    </div>
+</div>
+
+<!-- Araç Sekmeleri -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+    {% set tools = [
+        ('dns','DNS Sorgu','M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','#6366f1'),
+        ('ping','Ping Testi','M22 12h-4l-3 9L9 3l-3 9H2','#10b981'),
+        ('port','Port Tarama','M18 20V10 M12 20V4 M6 20v-6','#f59e0b'),
+        ('ssl','SSL Sertifika','M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z','#3b82f6'),
+        ('headers','HTTP Başlıkları','M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','#8b5cf6'),
+        ('traceroute','Traceroute','M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z','#ef4444'),
+        ('whois','WHOIS Sorgu','M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z','#ec4899'),
+        ('subnet','Subnet Hesap','M2 2h20v8H2z M2 14h20v8H2z','#14b8a6'),
+        ('geoip','IP Geolokasyon','M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10a3 3 0 1 0 0-0.01','#f97316'),
+        ('rdns','Reverse DNS','M1 4v6h6 M3.51 15a9 9 0 1 0 2.13-9.36L1 10','#06b6d4'),
+        ('banner','Banner Grab','M2 3h20v14H2z M8 21h8 M12 17v4','#a855f7'),
+        ('httpperf','HTTP Performans','M13 2L3 14h9l-1 8 10-12h-9l1-8z','#eab308'),
+    ] %}
+    {% for id, label, icon_path, color in tools %}
+    <button onclick="switchTool('{{ id }}')" id="tab-{{ id }}"
+        style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="{{ color }}" stroke-width="2" width="15" height="15"><path d="{{ icon_path }}"/></svg>
+        {{ label }}
+    </button>
+    {% endfor %}
+</div>
+
+<!-- Araç Kartları -->
+{% for id, label, icon_path, color in tools %}
+<div id="tool-{{ id }}" class="tool-panel" style="display:none;">
+    <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;gap:10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="{{ color }}" stroke-width="2" width="18" height="18"><path d="{{ icon_path }}"/></svg>
+            <span>{{ label }}</span>
+        </div>
+        <div class="card-body" id="form-{{ id }}">
+            <!-- Form içeriği JS tarafından doldurulacak -->
+        </div>
+    </div>
+    <div id="result-{{ id }}" style="margin-top:16px;display:none;"></div>
+</div>
+{% endfor %}
+
+<style>
+.tab-active { background: var(--accent-blue) !important; color: #fff !important; border-color: var(--accent-blue) !important; }
+.tool-result-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+.result-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.result-table td, .result-table th { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.result-table th { color: var(--text-muted); font-weight: 500; width: 200px; }
+.badge-open { background: rgba(16,185,129,.15); color: #10b981; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-closed { background: rgba(239,68,68,.1); color: #ef4444; padding: 2px 10px; border-radius: 20px; font-size: 11px; }
+.result-pre { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 14px; font-family: monospace; font-size: 12px; overflow-x: auto; white-space: pre-wrap; color: var(--text-secondary); max-height: 460px; overflow-y: auto; }
+.spin { animation: spin 1s linear infinite; display:inline-block; }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.sec-ok { color: #10b981; }
+.sec-bad { color: #ef4444; }
+.hop-row { display:flex; align-items:center; gap:10px; padding:5px 0; border-bottom:1px solid var(--border); font-size:13px; font-family:monospace; }
+.hop-num { color:var(--text-muted); width:30px; flex-shrink:0; }
+</style>
+
+<script>
+// ===================== ARAÇ FORMLARI =====================
+const FORMS = {
+    dns: `
+        <div class="form-group">
+            <label style="font-weight:600;">Domain veya IP</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="dns-host" type="text" class="form-control" placeholder="Örn: fbu.edu.tr" style="flex:1;">
+                <button onclick="runDns()" class="btn btn-primary">Sorgula</button>
+            </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            ${["A","AAAA","MX","NS","TXT","CNAME","PTR"].map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;"><input type="checkbox" id="dns-${t}" checked style="accent-color:var(--accent-blue);"> ${t}</label>`).join("")}
+        </div>`,
+    ping: `
+        <div class="form-group">
+            <label style="font-weight:600;">Hedef Host / IP</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="ping-host" type="text" class="form-control" placeholder="Örn: 8.8.8.8 veya fbu.edu.tr" style="flex:1;">
+                <select id="ping-count" class="form-control" style="width:90px;">
+                    <option value="1">1 paket</option>
+                    <option value="4" selected>4 paket</option>
+                    <option value="8">8 paket</option>
+                    <option value="10">10 paket</option>
+                </select>
+                <button onclick="runPing()" class="btn btn-primary">Ping</button>
+            </div>
+        </div>`,
+    port: `
+        <div class="form-group">
+            <label style="font-weight:600;">Hedef Host / IP</label>
+            <input id="port-host" type="text" class="form-control" placeholder="Örn: 10.2.0.87 veya fbu.edu.tr" style="margin-top:6px;">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+            <label style="font-weight:600;">Port Listesi</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="port-list" type="text" class="form-control" value="22,80,443,3306,5432,6379,8080,8443,27017" style="flex:1;">
+                <button onclick="runPort()" class="btn btn-primary">Tara</button>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                ${[
+                    ['Web','80,443,8080,8443'],
+                    ['DB','3306,5432,1433,6379,27017'],
+                    ['Mail','25,465,587,110,995,143,993'],
+                    ['Uzaktan Erişim','22,23,3389,5900'],
+                    ['Tümü','21,22,23,25,53,80,110,143,443,465,587,993,995,1433,3306,3389,5432,5900,6379,8080,8443,27017'],
+                ].map(([l,v])=>`<button onclick="document.getElementById('port-list').value='${v}'" class="btn btn-sm" style="font-size:11px;">${l}</button>`).join('')}
+            </div>
+        </div>`,
+    ssl: `
+        <div class="form-group">
+            <label style="font-weight:600;">Domain</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="ssl-host" type="text" class="form-control" placeholder="Örn: fbu.edu.tr" style="flex:1;">
+                <input id="ssl-port" type="number" class="form-control" value="443" style="width:80px;" placeholder="Port">
+                <button onclick="runSsl()" class="btn btn-primary">Kontrol Et</button>
+            </div>
+        </div>`,
+    headers: `
+        <div class="form-group">
+            <label style="font-weight:600;">URL</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="hdr-url" type="text" class="form-control" placeholder="https://fbu.edu.tr" style="flex:1;">
+                <label style="display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" id="hdr-follow" checked style="accent-color:var(--accent-blue);"> Yönlendirme takip et
+                </label>
+                <button onclick="runHeaders()" class="btn btn-primary">Getir</button>
+            </div>
+        </div>`,
+    traceroute: `
+        <div class="form-group">
+            <label style="font-weight:600;">Hedef Host / IP</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="tr-host" type="text" class="form-control" placeholder="Örn: 8.8.8.8 veya google.com" style="flex:1;">
+                <button onclick="runTraceroute()" class="btn btn-primary">Trace</button>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">⏱ Maks 20 hop, sonuç 60sn içinde gelir.</div>
+        </div>`,
+    whois: `
+        <div class="form-group">
+            <label style="font-weight:600;">Domain</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="whois-host" type="text" class="form-control" placeholder="Örn: fbu.edu.tr veya google.com" style="flex:1;">
+                <button onclick="runWhois()" class="btn btn-primary">Sorgula</button>
+            </div>
+        </div>`,
+    subnet: `
+        <div class="form-group">
+            <label style="font-weight:600;">IP/CIDR Adresi</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="subnet-cidr" type="text" class="form-control" placeholder="Örn: 192.168.1.0/24 veya 10.0.0.0/16" style="flex:1;">
+                <button onclick="runSubnet()" class="btn btn-primary">Hesapla</button>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                ${['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16','192.168.1.0/24','10.2.0.0/24','192.168.1.0/28'].map(c=>`<button onclick="document.getElementById('subnet-cidr').value='${c}'" class="btn btn-sm" style="font-size:11px;">${c}</button>`).join('')}
+            </div>
+        </div>`,
+    geoip: `
+        <div class="form-group">
+            <label style="font-weight:600;">IP Adresi veya Domain</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="geoip-host" type="text" class="form-control" placeholder="Örn: 8.8.8.8 veya google.com" style="flex:1;">
+                <button onclick="runGeoip()" class="btn btn-primary">Sorgula</button>
+            </div>
+        </div>`,
+    rdns: `
+        <div class="form-group">
+            <label style="font-weight:600;">IP Adresi veya Domain</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="rdns-host" type="text" class="form-control" placeholder="Örn: 8.8.8.8 veya fbu.edu.tr" style="flex:1;">
+                <button onclick="runRdns()" class="btn btn-primary">Sorgula</button>
+            </div>
+        </div>`,
+    banner: `
+        <div class="form-group">
+            <label style="font-weight:600;">Hedef Host / IP</label>
+            <input id="banner-host" type="text" class="form-control" placeholder="Örn: 10.2.0.87 veya fbu.edu.tr" style="margin-top:6px;">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+            <label style="font-weight:600;">Port Listesi</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="banner-ports" type="text" class="form-control" value="21,22,25,80,110,143,443,587,993,3306,3389,8080" style="flex:1;">
+                <button onclick="runBanner()" class="btn btn-primary">Tara</button>
+            </div>
+        </div>`,
+    httpperf: `
+        <div class="form-group">
+            <label style="font-weight:600;">URL</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <input id="perf-url" type="text" class="form-control" placeholder="https://fbu.edu.tr" style="flex:1;">
+                <select id="perf-method" class="form-control" style="width:100px;">
+                    <option value="GET">GET</option>
+                    <option value="HEAD">HEAD</option>
+                    <option value="POST">POST</option>
+                    <option value="OPTIONS">OPTIONS</option>
+                </select>
+                <button onclick="runHttpPerf()" class="btn btn-primary">Test Et</button>
+            </div>
+        </div>`,
+};
+
+// ===================== SEKME YÖNETİMİ =====================
+let currentTool = null;
+function switchTool(id) {
+    if (currentTool) {
+        document.getElementById('tool-' + currentTool).style.display = 'none';
+        document.getElementById('tab-' + currentTool).classList.remove('tab-active');
+    }
+    currentTool = id;
+    const panel = document.getElementById('tool-' + id);
+    panel.style.display = 'block';
+    document.getElementById('tab-' + id).classList.add('tab-active');
+    // Form doldur (ilk kez)
+    const formEl = document.getElementById('form-' + id);
+    if (!formEl.dataset.loaded) {
+        formEl.innerHTML = FORMS[id];
+        formEl.dataset.loaded = '1';
+    }
+    // Enter tuşu desteği
+    panel.querySelectorAll('input[type=text],input[type=number]').forEach(el => {
+        el.addEventListener('keydown', e => { if(e.key==='Enter') panel.querySelector('.btn-primary').click(); });
+    });
+}
+
+// ===================== YARDIMCI =====================
+function loading(id, msg='Sorgulanıyor...') {
+    const el = document.getElementById('result-' + id);
+    el.style.display = 'block';
+    el.innerHTML = `<div class="tool-result-card" style="text-align:center;padding:32px;">
+        <span class="spin">⟳</span> &nbsp;${msg}
+    </div>`;
+}
+function showResult(id, html) {
+    const el = document.getElementById('result-' + id);
+    el.style.display = 'block';
+    el.innerHTML = html;
+}
+function errBox(msg) {
+    return `<div class="tool-result-card" style="border-color:#ef4444;"><span style="color:#ef4444;">⚠ ${msg}</span></div>`;
+}
+async function api(endpoint, body) {
+    const r = await fetch('/tools/' + endpoint, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    });
+    return r.json();
+}
+
+// ===================== DNS =====================
+async function runDns() {
+    const host = document.getElementById('dns-host').value.trim();
+    if (!host) return;
+    const types = ["A","AAAA","MX","NS","TXT","CNAME","PTR"].filter(t => document.getElementById('dns-'+t)?.checked);
+    loading('dns', 'DNS sorgusu yapılıyor...');
+    const d = await api('dns', {host, types});
+    if (d.error) { showResult('dns', errBox(d.error)); return; }
+    const rows = Object.entries(d.results || {}).filter(([k]) => !k.startsWith('_')).map(([type, vals]) => {
+        const count = vals.length;
+        const v = count ? vals.map(x => `<div style="font-family:monospace;font-size:12px;color:var(--text-primary);">${x}</div>`).join('') : '<span style="color:var(--text-muted);">-</span>';
+        return `<tr><th>${type}</th><td>${v}</td></tr>`;
+    }).join('');
+    const ip = d.results?._ip ? `<div style="margin-bottom:10px;font-size:13px;color:var(--text-muted);">🔗 Çözümlenen IP: <strong style="color:var(--text-primary);">${d.results._ip}</strong></div>` : '';
+    showResult('dns', `<div class="tool-result-card">${ip}<table class="result-table">${rows}</table></div>`);
+}
+
+// ===================== PING =====================
+async function runPing() {
+    const host = document.getElementById('ping-host').value.trim();
+    const count = document.getElementById('ping-count').value;
+    if (!host) return;
+    loading('ping', `${host} adresine ${count} paket gönderiliyor...`);
+    const d = await api('ping', {host, count: parseInt(count)});
+    if (d.error) { showResult('ping', errBox(d.error)); return; }
+    const ok = d.success;
+    const pkts = d.packets || {};
+    const rtt = d.rtt || {};
+    const statusColor = ok ? '#10b981' : '#ef4444';
+    const statusText = ok ? '✓ BAŞARILI' : '✗ BAŞARISIZ';
+    showResult('ping', `<div class="tool-result-card">
+        <div style="display:flex;gap:24px;margin-bottom:16px;flex-wrap:wrap;">
+            <div><div style="font-size:11px;color:var(--text-muted);">DURUM</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${statusText}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">GÖNDERILEN</div><div style="font-size:20px;font-weight:700;">${pkts.sent||0}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">ALINAN</div><div style="font-size:20px;font-weight:700;color:#10b981;">${pkts.received||0}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">KAYIP</div><div style="font-size:20px;font-weight:700;color:#ef4444;">${pkts.loss||'?'}</div></div>
+            ${rtt.avg ? `<div><div style="font-size:11px;color:var(--text-muted);">ORT. RTT</div><div style="font-size:20px;font-weight:700;">${rtt.avg}ms</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">MIN</div><div style="font-size:20px;font-weight:700;color:#10b981;">${rtt.min}ms</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">MAX</div><div style="font-size:20px;font-weight:700;color:#f59e0b;">${rtt.max}ms</div></div>` : ''}
+        </div>
+        <div class="result-pre">${d.output||''}</div>
+    </div>`);
+}
+
+// ===================== PORT TARAMA =====================
+async function runPort() {
+    const host = document.getElementById('port-host').value.trim();
+    const ports = document.getElementById('port-list').value;
+    if (!host) return;
+    const portCount = ports.split(',').length;
+    loading('port', `${portCount} port taranıyor...`);
+    const d = await api('port', {host, ports});
+    if (d.error) { showResult('port', errBox(d.error)); return; }
+    const open = (d.results||[]).filter(r=>r.status==='open').length;
+    const total = (d.results||[]).length;
+    const rows = (d.results||[]).map(r => `<tr>
+        <td style="font-family:monospace;font-weight:600;">${r.port}</td>
+        <td style="color:var(--text-muted);">${r.name||''}</td>
+        <td>${r.status==='open' ? '<span class="badge-open">AÇIK</span>' : '<span class="badge-closed">KAPALI</span>'}</td>
+    </tr>`).join('');
+    showResult('port', `<div class="tool-result-card">
+        <div style="margin-bottom:12px;font-size:13px;">
+            <strong style="color:#10b981;">${open} açık</strong> / <span style="color:var(--text-muted);">${total} port tarandı</span>
+        </div>
+        <table class="result-table"><thead><tr><th>Port</th><th>Servis</th><th>Durum</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`);
+}
+
+// ===================== SSL =====================
+async function runSsl() {
+    const host = document.getElementById('ssl-host').value.trim();
+    const port = parseInt(document.getElementById('ssl-port').value) || 443;
+    if (!host) return;
+    loading('ssl', 'SSL sertifikası kontrol ediliyor...');
+    const d = await api('ssl', {host, port});
+    if (d.error) { showResult('ssl', errBox(d.error)); return; }
+    if (!d.valid) { showResult('ssl', errBox('Geçersiz sertifika: ' + d.error)); return; }
+    const days = d.days_left;
+    const daysColor = days < 14 ? '#ef4444' : days < 30 ? '#f59e0b' : '#10b981';
+    const daysLabel = days < 0 ? `⚠ SÜRESİ DOLMUŞ (${Math.abs(days)} gün önce)` : `${days} gün kaldı`;
+    const sans = (d.sans||[]).slice(0,12).map(s=>`<span style="background:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:11px;font-family:monospace;">${s}</span>`).join(' ');
+    showResult('ssl', `<div class="tool-result-card">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
+            <div><div style="font-size:11px;color:var(--text-muted);">DURUM</div><div style="font-size:20px;font-weight:700;color:#10b981;">✓ GEÇERLİ</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">KALAN SÜRE</div><div style="font-size:20px;font-weight:700;color:${daysColor};">${daysLabel}</div></div>
+        </div>
+        <table class="result-table">
+            <tr><th>Konu (CN)</th><td style="font-family:monospace;">${d.subject?.commonName||'-'}</td></tr>
+            <tr><th>Düzenleyen</th><td>${d.issuer?.organizationName||'-'} (${d.issuer?.commonName||'-'})</td></tr>
+            <tr><th>Başlangıç</th><td>${d.not_before||'-'}</td></tr>
+            <tr><th>Bitiş</th><td style="color:${daysColor};">${d.not_after||'-'}</td></tr>
+            ${sans ? `<tr><th>SAN Kayıtları</th><td style="line-height:1.8;">${sans}</td></tr>` : ''}
+        </table>
+    </div>`);
+}
+
+// ===================== HTTP BAŞLIKLARI =====================
+async function runHeaders() {
+    const url = document.getElementById('hdr-url').value.trim();
+    const follow = document.getElementById('hdr-follow').checked;
+    if (!url) return;
+    loading('headers', 'HTTP isteği gönderiliyor...');
+    const d = await api('headers', {url, follow_redirects: follow});
+    if (d.error) { showResult('headers', errBox(d.error)); return; }
+    const statusColor = d.status_code < 300 ? '#10b981' : d.status_code < 400 ? '#f59e0b' : '#ef4444';
+    const history = (d.history||[]).map(h=>`<div style="font-size:12px;">↪ <span style="color:#f59e0b;">${h.status}</span> ${h.url}</div>`).join('');
+    const hRows = Object.entries(d.headers||{}).map(([k,v])=>`<tr><th style="font-family:monospace;color:var(--accent-blue);">${k}</th><td style="font-family:monospace;word-break:break-all;">${v}</td></tr>`).join('');
+    const sec = d.security || {};
+    const secRows = Object.entries(sec).map(([k,v])=>`<tr><th>${k}</th><td class="${v?'sec-ok':'sec-bad'}">${v?'✓ Mevcut':'✗ Eksik'}</td></tr>`).join('');
+    showResult('headers', `<div class="tool-result-card">
+        <div style="display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap;">
+            <div><div style="font-size:11px;color:var(--text-muted);">DURUM</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${d.status_code} ${d.reason||''}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">YANIT SÜRESİ</div><div style="font-size:20px;font-weight:700;">${d.elapsed_ms||'-'}ms</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">HTTP</div><div style="font-size:20px;font-weight:700;">${d.http_version||'-'}</div></div>
+        </div>
+        ${history ? `<div style="margin-bottom:12px;padding:10px;background:var(--bg-primary);border-radius:6px;">${history}</div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+                <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">BAŞLIKLAR</div>
+                <table class="result-table" style="font-size:12px;">${hRows}</table>
+            </div>
+            <div>
+                <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">GÜVENLİK ANALİZİ</div>
+                <table class="result-table">${secRows}</table>
+            </div>
+        </div>
+    </div>`);
+}
+
+// ===================== TRACEROUTE =====================
+async function runTraceroute() {
+    const host = document.getElementById('tr-host').value.trim();
+    if (!host) return;
+    loading('traceroute', 'Traceroute çalıştırılıyor (60sn\'e kadar sürebilir)...');
+    const d = await api('traceroute', {host});
+    if (d.error) { showResult('traceroute', errBox(d.error)); return; }
+    const hops = (d.hops||[]).map((hop, i) => {
+        const hopNum = i + 1;
+        const isTimeout = hop.includes('* * *');
+        return `<div class="hop-row">
+            <span class="hop-num">${hopNum}</span>
+            <span style="color:${isTimeout?'var(--text-muted)':'var(--text-primary)'};">${hop}</span>
+        </div>`;
+    }).join('');
+    showResult('traceroute', `<div class="tool-result-card">
+        <div style="margin-bottom:12px;font-size:13px;color:var(--text-muted);">${(d.hops||[]).length} hop tespit edildi</div>
+        <div>${hops || '<span style="color:var(--text-muted);">Sonuç yok</span>'}</div>
+    </div>`);
+}
+
+// ===================== WHOIS =====================
+async function runWhois() {
+    const host = document.getElementById('whois-host').value.trim();
+    if (!host) return;
+    loading('whois', 'WHOIS sorgulama...');
+    const d = await api('whois', {host});
+    if (d.error) { showResult('whois', errBox(d.error)); return; }
+    const fields = d.fields || {};
+    const fRows = Object.entries(fields).map(([k,v]) => {
+        const val = Array.isArray(v) ? v.join('<br>') : v;
+        return `<tr><th>${k}</th><td>${val}</td></tr>`;
+    }).join('');
+    showResult('whois', `<div class="tool-result-card">
+        ${fRows ? `<table class="result-table" style="margin-bottom:16px;">${fRows}</table>` : ''}
+        <details>
+            <summary style="cursor:pointer;font-size:13px;color:var(--text-muted);margin-bottom:8px;">Ham Yanıt</summary>
+            <div class="result-pre">${(d.raw||'').replace(/</g,'&lt;')}</div>
+        </details>
+    </div>`);
+}
+
+// ===================== SUBNET HESAPLAYICI =====================
+async function runSubnet() {
+    const cidr = document.getElementById('subnet-cidr').value.trim();
+    if (!cidr) return;
+    loading('subnet', 'Hesaplanıyor...');
+    const d = await api('subnet', {cidr});
+    if (d.error) { showResult('subnet', errBox(d.error)); return; }
+    const privLabel = d.is_private ? '<span style="color:#f59e0b;">Özel (Private)</span>' : '<span style="color:#10b981;">Genel (Public)</span>';
+    showResult('subnet', `<div class="tool-result-card">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
+            <div><div style="font-size:11px;color:var(--text-muted);">AĞADRESI</div><div style="font-size:18px;font-weight:700;font-family:monospace;">${d.network}/${d.prefix}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">KULLANILABILIR HOST</div><div style="font-size:18px;font-weight:700;color:#10b981;">${d.usable_hosts.toLocaleString()}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">TÜR</div><div style="font-size:14px;font-weight:600;">${privLabel}</div></div>
+        </div>
+        <table class="result-table">
+            <tr><th>Ağ Adresi</th><td style="font-family:monospace;">${d.network}</td></tr>
+            <tr><th>Broadcast</th><td style="font-family:monospace;">${d.broadcast}</td></tr>
+            <tr><th>Subnet Mask</th><td style="font-family:monospace;">${d.netmask}</td></tr>
+            <tr><th>Wildcard</th><td style="font-family:monospace;">${d.wildcard}</td></tr>
+            <tr><th>CIDR Prefix</th><td>/${d.prefix}</td></tr>
+            <tr><th>Toplam Adres</th><td>${d.total_hosts.toLocaleString()}</td></tr>
+            <tr><th>Kullanılabilir</th><td>${d.usable_hosts.toLocaleString()}</td></tr>
+            <tr><th>İlk Host</th><td style="font-family:monospace;">${d.first_host}</td></tr>
+            <tr><th>Son Host</th><td style="font-family:monospace;">${d.last_host}</td></tr>
+            <tr><th>IP Sürümü</th><td>IPv${d.version}</td></tr>
+        </table>
+    </div>`);
+}
+
+// ===================== IP GEOLOKASYON =====================
+async function runGeoip() {
+    const host = document.getElementById('geoip-host').value.trim();
+    if (!host) return;
+    loading('geoip', 'IP konum bilgisi alınıyor...');
+    const d = await api('geoip', {host});
+    if (d.error) { showResult('geoip', errBox(d.error)); return; }
+    const flag = d.country_code ? `https://flagcdn.com/24x18/${d.country_code.toLowerCase()}.png` : '';
+    const mapUrl = (d.lat && d.lon) ? `https://www.openstreetmap.org/?mlat=${d.lat}&mlon=${d.lon}#map=10/${d.lat}/${d.lon}` : null;
+    showResult('geoip', `<div class="tool-result-card">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
+            <div><div style="font-size:11px;color:var(--text-muted);">IP ADRESİ</div><div style="font-size:18px;font-weight:700;font-family:monospace;">${d.ip}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">KONUM</div><div style="font-size:18px;font-weight:700;">${flag ? `<img src="${flag}" style="vertical-align:middle;margin-right:6px;">` : ''}${d.city || '-'}, ${d.country || '-'}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">ISP</div><div style="font-size:14px;font-weight:600;">${d.isp || '-'}</div></div>
+        </div>
+        <table class="result-table">
+            ${d.hostname ? `<tr><th>Hostname</th><td>${d.hostname}</td></tr>` : ''}
+            <tr><th>Ülke</th><td>${d.country || '-'} (${d.country_code || '-'})</td></tr>
+            <tr><th>Bölge</th><td>${d.region || '-'}</td></tr>
+            <tr><th>Şehir</th><td>${d.city || '-'}</td></tr>
+            <tr><th>Posta Kodu</th><td>${d.zip || '-'}</td></tr>
+            <tr><th>Koordinatlar</th><td>${d.lat}, ${d.lon} ${mapUrl ? `<a href="${mapUrl}" target="_blank" style="margin-left:8px;color:var(--accent-blue);">🗺 Haritada Gör</a>` : ''}</td></tr>
+            <tr><th>Zaman Dilimi</th><td>${d.timezone || '-'}</td></tr>
+            <tr><th>ISP</th><td>${d.isp || '-'}</td></tr>
+            <tr><th>Organizasyon</th><td>${d.org || '-'}</td></tr>
+            <tr><th>AS</th><td style="font-family:monospace;">${d.as || '-'}</td></tr>
+        </table>
+    </div>`);
+}
+
+// ===================== REVERSE DNS =====================
+async function runRdns() {
+    const host = document.getElementById('rdns-host').value.trim();
+    if (!host) return;
+    loading('rdns', 'Reverse DNS sorgulama...');
+    const d = await api('rdns', {host});
+    if (d.error) { showResult('rdns', errBox(d.error)); return; }
+    const r = d.results || {};
+    const fwd = r.forward || {};
+    const rev = r.reverse || {};
+    const mx = r.mx || [];
+    const cname = r.cname || [];
+
+    let html = `<div class="tool-result-card">`;
+
+    // Forward
+    html += `<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">FORWARD LOOKUP (Domain → IP)</div>`;
+    if (fwd.error) {
+        html += `<div style="color:#ef4444;margin-bottom:16px;">${fwd.error}</div>`;
+    } else {
+        const ipv4 = (fwd.ipv4||[]).map(ip=>`<span style="font-family:monospace;background:var(--bg-primary);padding:2px 8px;border-radius:4px;">${ip}</span>`).join(' ');
+        const ipv6 = (fwd.ipv6||[]).map(ip=>`<span style="font-family:monospace;background:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:11px;">${ip}</span>`).join(' ');
+        html += `<table class="result-table" style="margin-bottom:16px;">
+            <tr><th>IPv4</th><td>${ipv4 || '-'}</td></tr>
+            <tr><th>IPv6</th><td>${ipv6 || '-'}</td></tr>
+        </table>`;
+    }
+
+    // Reverse
+    html += `<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">REVERSE LOOKUP (IP → Hostname)</div>`;
+    if (rev.error) {
+        html += `<div style="color:#ef4444;margin-bottom:16px;">${rev.error}</div>`;
+    } else {
+        html += `<table class="result-table" style="margin-bottom:16px;">
+            <tr><th>IP</th><td style="font-family:monospace;">${rev.ip||'-'}</td></tr>
+            <tr><th>Hostname</th><td style="font-family:monospace;">${rev.hostname||'-'}</td></tr>
+            ${(rev.aliases||[]).length ? `<tr><th>Aliases</th><td>${rev.aliases.join(', ')}</td></tr>` : ''}
+        </table>`;
+    }
+
+    // CNAME
+    if (cname.length) {
+        html += `<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">CNAME</div>
+            <div style="margin-bottom:16px;">${cname.map(c=>`<span style="font-family:monospace;background:var(--bg-primary);padding:2px 8px;border-radius:4px;">${c}</span>`).join(' ')}</div>`;
+    }
+
+    // MX
+    if (mx.length) {
+        html += `<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">MX KAYITLARI</div>
+            <table class="result-table"><thead><tr><th>Öncelik</th><th>Mail Sunucu</th><th>IP</th></tr></thead><tbody>
+            ${mx.map(m=>`<tr><td>${m.priority}</td><td style="font-family:monospace;">${m.host}</td><td style="font-family:monospace;">${m.ip||'-'}</td></tr>`).join('')}
+            </tbody></table>`;
+    }
+
+    html += `</div>`;
+    showResult('rdns', html);
+}
+
+// ===================== BANNER GRAB =====================
+async function runBanner() {
+    const host = document.getElementById('banner-host').value.trim();
+    const ports = document.getElementById('banner-ports').value;
+    if (!host) return;
+    loading('banner', 'Servis banner bilgileri alınıyor...');
+    const d = await api('banner', {host, ports});
+    if (d.error) { showResult('banner', errBox(d.error)); return; }
+    const results = d.results || [];
+    const openPorts = results.filter(r=>r.status==='open');
+    const rows = results.map(r => {
+        const bannerHtml = r.banner ? `<div class="result-pre" style="max-height:80px;font-size:11px;padding:6px 8px;margin:0;">${r.banner.replace(/</g,'&lt;')}</div>` : '<span style="color:var(--text-muted);">-</span>';
+        return `<tr>
+            <td style="font-family:monospace;font-weight:600;">${r.port}</td>
+            <td style="color:var(--text-muted);">${r.name||''}</td>
+            <td>${r.status==='open' ? '<span class="badge-open">AÇIK</span>' : '<span class="badge-closed">KAPALI</span>'}</td>
+            <td>${r.status==='open' ? bannerHtml : '-'}</td>
+        </tr>`;
+    }).join('');
+    showResult('banner', `<div class="tool-result-card">
+        <div style="margin-bottom:12px;font-size:13px;">
+            <strong style="color:#10b981;">${openPorts.length} açık port</strong> / <span style="color:var(--text-muted);">${results.length} tarandı</span>
+            — <strong>${openPorts.filter(r=>r.banner).length}</strong> banner tespit edildi
+        </div>
+        <table class="result-table"><thead><tr><th>Port</th><th>Servis</th><th>Durum</th><th>Banner</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`);
+}
+
+// ===================== HTTP PERFORMANS =====================
+async function runHttpPerf() {
+    const url = document.getElementById('perf-url').value.trim();
+    const method = document.getElementById('perf-method').value;
+    if (!url) return;
+    loading('httpperf', 'HTTP performans testi yapılıyor...');
+    const d = await api('httpperf', {url, method});
+    if (d.error) { showResult('httpperf', errBox(d.error)); return; }
+    const t = d.timing || {};
+    const statusColor = d.status_code < 300 ? '#10b981' : d.status_code < 400 ? '#f59e0b' : '#ef4444';
+
+    // Timing bar visualization
+    const maxTime = t.total_ms || 1;
+    const barWidth = (ms) => ms != null ? Math.max(2, (ms / maxTime) * 100) : 0;
+    const barColor = (ms) => ms < 100 ? '#10b981' : ms < 500 ? '#f59e0b' : '#ef4444';
+
+    function timeBar(label, ms) {
+        if (ms == null) return '';
+        const w = barWidth(ms);
+        const c = barColor(ms);
+        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="width:80px;font-size:12px;color:var(--text-muted);text-align:right;">${label}</div>
+            <div style="flex:1;background:var(--bg-primary);border-radius:4px;height:22px;overflow:hidden;">
+                <div style="width:${w}%;background:${c};height:100%;border-radius:4px;min-width:2px;"></div>
+            </div>
+            <div style="width:70px;font-size:13px;font-weight:600;font-family:monospace;">${ms}ms</div>
+        </div>`;
+    }
+
+    const sizeKB = d.content_length ? (d.content_length / 1024).toFixed(1) + ' KB' : '-';
+    const redirectHtml = (d.redirects||[]).map(r=>`<div style="font-size:12px;">↪ <span style="color:#f59e0b;">${r.status}</span> ${r.url}</div>`).join('');
+
+    showResult('httpperf', `<div class="tool-result-card">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;">
+            <div><div style="font-size:11px;color:var(--text-muted);">DURUM</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${d.status_code} ${d.reason||''}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">TOPLAM SÜRE</div><div style="font-size:20px;font-weight:700;">${t.total_ms||'-'}ms</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">BOYUT</div><div style="font-size:20px;font-weight:700;">${sizeKB}</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);">HTTP</div><div style="font-size:20px;font-weight:700;">${d.http_version||'-'}</div></div>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">ZAMANLAMA DETAYI</div>
+        ${timeBar('DNS', t.dns_ms)}
+        ${timeBar('TCP', t.tcp_ms)}
+        ${timeBar('TTFB', t.ttfb_ms)}
+        ${timeBar('Toplam', t.total_ms)}
+
+        <table class="result-table" style="margin-top:16px;">
+            <tr><th>URL</th><td style="font-family:monospace;word-break:break-all;">${d.url}</td></tr>
+            <tr><th>Metod</th><td>${d.method}</td></tr>
+            <tr><th>Çözümlenen IP</th><td style="font-family:monospace;">${d.resolved_ip||'-'}</td></tr>
+            <tr><th>Sunucu</th><td>${d.server||'-'}</td></tr>
+            <tr><th>Content-Type</th><td>${d.content_type||'-'}</td></tr>
+            <tr><th>Encoding</th><td>${d.encoding||'-'}</td></tr>
+            ${d.redirect_count ? `<tr><th>Yönlendirmeler (${d.redirect_count})</th><td>${redirectHtml}</td></tr>` : ''}
+        </table>
+    </div>`);
+}
+
+// Başlangıçta URL parametresine ya da sessionStorage'a göre aracı aç
+const urlTool = new URLSearchParams(location.search).get('t');
+const savedTool = sessionStorage.getItem('tool');
+switchTool(urlTool || savedTool || 'dns');
+</script>
+{% endblock %}

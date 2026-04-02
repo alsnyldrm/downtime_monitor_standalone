@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} - Gruplar{% endblock %}
+{% block content %}
+<div class="section-header">
+    <div style="display:flex;align-items:center;gap:10px;">
+        <a href="/groups" class="btn btn-sm">← Geri</a>
+        <div>
+            <h2 style="margin:0;">{{ group.name }}</h2>
+            {% if group.description %}<small style="color:var(--text-muted);">{{ group.description }}</small>{% endif %}
+        </div>
+    </div>
+    {% if user.role.value in ('admin', 'editor') %}
+    <div style="display:flex;gap:8px;">
+        <a href="/groups/{{ group.id }}/edit" class="btn btn-sm">Düzenle</a>
+        <form method="post" action="/groups/{{ group.id }}/delete" onsubmit="return confirm('Grubu silmek istediğinize emin misiniz?')">
+            <button class="btn btn-danger btn-sm">Sil</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card">
+        <div class="stat-label">Toplam Monitör</div>
+        <div class="stat-num">{{ monitors|length }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">UP</div>
+        <div class="stat-num" style="color:#10b981;">{{ monitors|selectattr('status.value','equalto','up')|list|length }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">DOWN</div>
+        <div class="stat-num" style="color:#ef4444;">{{ monitors|selectattr('status.value','equalto','down')|list|length }}</div>
+    </div>
+</div>
+
+<!-- Gruptaki Monitörler -->
+<div class="card" style="margin-top:16px;">
+    <div class="card-header">Gruptaki Monitörler</div>
+    <div class="card-body" style="padding:0;">
+        {% if monitors|length == 0 %}
+        <div class="empty-state" style="padding:48px;">Bu grupta henüz monitör yok.</div>
+        {% else %}
+        <table class="table">
+            <thead><tr><th>Durum</th><th>Ad</th><th>URL</th><th>Uptime</th><th>Son RT</th><th></th></tr></thead>
+            <tbody>
+            {% for mon in monitors %}
+            <tr>
+                <td>
+                    {% if mon.status %}
+                    <span class="dot dot-{{ mon.status.value }}"></span>
+                    {% else %}
+                    <span class="dot dot-pending"></span>
+                    {% endif %}
+                </td>
+                <td><a href="/monitors/{{ mon.id }}" style="color:var(--text-primary);font-weight:500;">{{ mon.name }}</a></td>
+                <td style="color:var(--text-muted);font-size:13px;">{{ mon.url[:50] }}{% if mon.url|length > 50 %}…{% endif %}</td>
+                <td>
+                    {% if mon.uptime_percentage is not none %}
+                    <span style="color:{% if mon.uptime_percentage >= 99 %}#10b981{% elif mon.uptime_percentage >= 95 %}#f59e0b{% else %}#ef4444{% endif %};">{{ "%.1f"|format(mon.uptime_percentage) }}%</span>
+                    {% else %}-{% endif %}
+                </td>
+                <td style="color:var(--text-muted);">{{ "%.0f"|format(mon.last_response_time or 0) }}ms</td>
+                <td>
+                    {% if user.role.value in ('admin', 'editor') %}
+                    <form method="post" action="/groups/{{ group.id }}/remove/{{ mon.id }}" style="display:inline;" onsubmit="return confirm('Monitörü gruptan çıkarmak istiyor musunuz?')">
+                        <button class="btn btn-sm btn-danger" style="font-size:11px;padding:2px 8px;">Çıkar</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Monitör Ata -->
+{% if user.role.value in ('admin', 'editor') and unassigned|length > 0 %}
+<div class="card" style="margin-top:16px;">
+    <div class="card-header">Bu Gruba Monitör Ata</div>
+    <div class="card-body">
+        <form method="post" action="/groups/{{ group.id }}/assign" style="display:flex;gap:10px;align-items:center;">
+            <select name="monitor_id" class="form-control" style="flex:1;max-width:400px;">
+                <option value="">Monitör seçin...</option>
+                {% for mon in unassigned %}
+                <option value="{{ mon.id }}">{{ mon.name }} ({{ mon.url[:40] }})</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Ata</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

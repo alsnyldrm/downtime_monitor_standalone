@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Gruplar - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>Monitör Grupları</h2>
+    {% if user.role.value in ('admin', 'editor') %}
+    <a href="/groups/new" class="btn btn-primary btn-sm">+ Yeni Grup</a>
+    {% endif %}
+</div>
+
+{% if groups|length == 0 %}
+<div class="card">
+    <div class="empty-state">Henüz grup oluşturulmadı. <a href="/groups/new">Yeni grup oluştur</a></div>
+</div>
+{% else %}
+<div class="monitor-list">
+    {% for g in groups %}
+    <a href="/groups/{{ g.id }}" class="monitor-row" style="text-decoration:none;">
+        <div class="monitor-status">
+            <span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:var(--accent-blue);opacity:0.15;font-size:18px;">
+            </span>
+            <svg style="position:absolute;" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" width="18" height="18"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="monitor-info">
+            <div class="monitor-name">{{ g.name }}</div>
+            <div class="monitor-url">{{ g.description or 'Açıklama yok' }}</div>
+        </div>
+        <div class="monitor-meta">
+            <span class="uptime-badge up">{{ g.monitors|length }} monitör</span>
+        </div>
+        <div class="monitor-meta" style="display:flex;gap:6px;">
+            {% set up_c = g.monitors|selectattr('status.value','equalto','up')|list|length %}
+            {% set down_c = g.monitors|selectattr('status.value','equalto','down')|list|length %}
+            {% if up_c > 0 %}<span class="dot dot-up" title="{{ up_c }} UP"></span>{% endif %}
+            {% if down_c > 0 %}<span class="dot dot-down" title="{{ down_c }} DOWN"></span>{% endif %}
+        </div>
+        {% if user.role.value in ('admin', 'editor') %}
+        <div class="monitor-meta" style="flex-shrink:0;" onclick="event.preventDefault();event.stopPropagation();window.location='/groups/{{ g.id }}/settings';">
+            <span class="btn btn-sm" title="Grup Ayarları" style="padding:4px 8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </span>
+        </div>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if ungrouped > 0 %}
+<div class="section-header" style="margin-top:24px;">
+    <h2 style="font-size:14px;color:var(--text-muted);">Gruba atanmamış: {{ ungrouped }} monitör</h2>
+</div>
+{% endif %}
+{% endblock %}

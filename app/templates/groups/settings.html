@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}Grup Ayarları - {{ group.name }} - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>{{ group.name }} — Toplu Ayarlar</h2>
+    <a href="/groups/{{ group.id }}" class="btn btn-sm">← Gruba Dön</a>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div style="margin-bottom:16px;font-size:13px;color:var(--text-muted);">
+    Bu gruptaki <strong>{{ monitors|length }}</strong> monitörün ayarlarını toplu değiştirebilirsiniz.
+    Sadece işaretlediğiniz ayarlar tüm monitörlere uygulanır.
+</div>
+
+{% if monitors|length == 0 %}
+<div class="card"><div class="empty-state">Bu grupta henüz monitör yok.</div></div>
+{% else %}
+<form method="post" style="max-width:750px;">
+
+    <!-- Kontrol Aralığı -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="checkbox" name="apply_interval" value="on" id="chkInterval" onchange="toggleSection('interval',this.checked)">
+                <label for="chkInterval" style="font-weight:700;cursor:pointer;margin:0;">Kontrol Aralığı</label>
+            </div>
+            <div id="section_interval" style="opacity:0.4;pointer-events:none;">
+                <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Her <strong id="intervalLabel">60 saniye</strong> kontrol edilecek.</p>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="range" id="intervalSlider" min="5" max="86400" step="5" value="60" style="flex:1;accent-color:var(--primary);" oninput="updateInterval(this.value)">
+                    <input type="number" id="intervalInput" min="5" max="86400" step="5" value="60" style="width:88px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:14px;" oninput="updateInterval(this.value)">
+                    <span style="font-size:13px;color:var(--text-muted);">sn</span>
+                </div>
+                <input type="hidden" name="interval" id="intervalHidden" value="60">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:6px;">
+                    <span>5sn</span><span>1dk</span><span>5dk</span><span>30dk</span><span>1sa</span><span>12sa</span><span>24sa</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zaman Aşımı -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="checkbox" name="apply_timeout" value="on" id="chkTimeout" onchange="toggleSection('timeout',this.checked)">
+                <label for="chkTimeout" style="font-weight:700;cursor:pointer;margin:0;">İstek Zaman Aşımı</label>
+            </div>
+            <div id="section_timeout" style="opacity:0.4;pointer-events:none;">
+                <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">Zaman aşımı: <strong id="timeoutLabel">30 saniye</strong></p>
+                <input type="range" id="timeoutSlider" min="5" max="60" step="5" value="30" style="width:100%;accent-color:var(--primary);" oninput="updateTimeout(this.value)">
+                <input type="hidden" name="timeout" id="timeoutHidden" value="30">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:6px;">
+                    <span>5sn</span><span>15sn</span><span>30sn</span><span>45sn</span><span>60sn</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTTP Metodu -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="checkbox" name="apply_http_method" value="on" id="chkMethod" onchange="toggleSection('method',this.checked)">
+                <label for="chkMethod" style="font-weight:700;cursor:pointer;margin:0;">HTTP Metodu</label>
+            </div>
+            <div id="section_method" style="opacity:0.4;pointer-events:none;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    {% for m in ['HEAD','GET','POST','PUT','PATCH','DELETE','OPTIONS'] %}
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;transition:all .15s;"
+                           class="method-btn {% if m == 'GET' %}method-active{% endif %}">
+                        <input type="radio" name="http_method" value="{{ m }}" {% if m == 'GET' %}checked{% endif %} style="display:none;" onchange="selectMethod(this)">
+                        {{ m }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yönlendirme Takibi -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="checkbox" name="apply_follow_redirects" value="on" id="chkRedirects" onchange="toggleSection('redirects',this.checked)">
+                <label for="chkRedirects" style="font-weight:700;cursor:pointer;margin:0;">Yönlendirmeleri Takip Et</label>
+            </div>
+            <div id="section_redirects" style="opacity:0.4;pointer-events:none;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="checkbox" name="follow_redirects" id="followRedirects" checked style="display:none;">
+                    <div class="toggle-track" id="followTrack" onclick="toggleFollow(event)">
+                        <div class="toggle-thumb" id="followThumb"></div>
+                    </div>
+                    <span style="font-size:13px;color:var(--text-muted);">Kapalıysa, 3xx yanıt kodları DOWN sayılır.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bildirim E-postası -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="checkbox" name="apply_notification_email" value="on" id="chkEmail" onchange="toggleSection('email',this.checked)">
+                <label for="chkEmail" style="font-weight:700;cursor:pointer;margin:0;">Bildirim E-postası</label>
+            </div>
+            <div id="section_email" style="opacity:0.4;pointer-events:none;">
+                <input type="email" name="notification_email" class="form-control" placeholder="alarm@fbu.edu.tr">
+            </div>
+        </div>
+    </div>
+
+    <!-- Aktiflik -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="checkbox" name="apply_is_active" value="on" id="chkActive" onchange="toggleSection('active',this.checked)">
+                <label for="chkActive" style="font-weight:700;cursor:pointer;margin:0;">Aktiflik Durumu</label>
+            </div>
+            <div id="section_active" style="opacity:0.4;pointer-events:none;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <input type="checkbox" name="is_active" id="isActiveChk" checked style="display:none;">
+                    <div class="toggle-track" id="activeTrack" onclick="toggleActive(event)">
+                        <div class="toggle-thumb" id="activeThumb"></div>
+                    </div>
+                    <span style="font-size:13px;color:var(--text-muted);">Kapalıysa monitörler duraklatılır.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+        <button type="submit" class="btn btn-primary">Tüm Monitörlere Uygula</button>
+        <a href="/groups/{{ group.id }}" class="btn btn-sm">İptal</a>
+    </div>
+</form>
+
+<!-- Gruptaki Monitörler -->
+<div class="section-header" style="margin-top:32px;">
+    <h2 style="font-size:15px;">Etkilenecek Monitörler ({{ monitors|length }})</h2>
+</div>
+<div class="monitor-list">
+    {% for m in monitors %}
+    <div class="monitor-row" style="cursor:default;">
+        <div class="monitor-status">
+            <span class="dot dot-{{ m.status.value if m.status else 'pending' }}"></span>
+        </div>
+        <div class="monitor-info">
+            <div class="monitor-name">{{ m.name }}</div>
+            <div class="monitor-url">{{ m.type.value|upper }} · Aralık: {{ m.interval }}sn · Timeout: {{ m.timeout }}sn · {{ m.http_method }}</div>
+        </div>
+        <div class="monitor-meta">
+            <span class="badge {% if m.is_active %}badge-up{% else %}badge-warn{% endif %}">{{ 'Aktif' if m.is_active else 'Pasif' }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<style>
+.method-btn { transition: all .15s; }
+.method-active { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+.toggle-track { width:42px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background .2s; }
+.toggle-thumb { width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3); }
+</style>
+
+<script>
+function toggleSection(name, enabled) {
+    const el = document.getElementById('section_' + name);
+    el.style.opacity = enabled ? '1' : '0.4';
+    el.style.pointerEvents = enabled ? 'auto' : 'none';
+}
+
+function fmtInterval(n) {
+    if (n < 60) return n + ' saniye';
+    if (n < 3600) return Math.round(n / 60) + ' dakika';
+    return Math.round(n / 3600) + ' saat';
+}
+
+function updateInterval(v) {
+    v = parseInt(v);
+    document.getElementById('intervalSlider').value = v;
+    document.getElementById('intervalInput').value = v;
+    document.getElementById('intervalHidden').value = v;
+    document.getElementById('intervalLabel').textContent = fmtInterval(v);
+}
+
+function updateTimeout(v) {
+    v = parseInt(v);
+    document.getElementById('timeoutSlider').value = v;
+    document.getElementById('timeoutHidden').value = v;
+    document.getElementById('timeoutLabel').textContent = v + ' saniye';
+}
+
+function selectMethod(el) {
+    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('method-active'));
+    el.parentElement.classList.add('method-active');
+}
+
+function toggleFollow(e) {
+    e.preventDefault();
+    const cb = document.getElementById('followRedirects');
+    cb.checked = !cb.checked;
+    const track = document.getElementById('followTrack');
+    const thumb = document.getElementById('followThumb');
+    if (cb.checked) {
+        track.style.background = 'var(--primary)';
+        thumb.style.left = '20px';
+    } else {
+        track.style.background = 'var(--border)';
+        thumb.style.left = '2px';
+    }
+}
+
+function toggleActive(e) {
+    e.preventDefault();
+    const cb = document.getElementById('isActiveChk');
+    cb.checked = !cb.checked;
+    const track = document.getElementById('activeTrack');
+    const thumb = document.getElementById('activeThumb');
+    if (cb.checked) {
+        track.style.background = 'var(--primary)';
+        thumb.style.left = '20px';
+    } else {
+        track.style.background = 'var(--border)';
+        thumb.style.left = '2px';
+    }
+}
+
+// Init toggles
+document.addEventListener('DOMContentLoaded', function() {
+    const fr = document.getElementById('followRedirects');
+    if (fr && fr.checked) {
+        document.getElementById('followTrack').style.background = 'var(--primary)';
+        document.getElementById('followThumb').style.left = '20px';
+    }
+    const ac = document.getElementById('isActiveChk');
+    if (ac && ac.checked) {
+        document.getElementById('activeTrack').style.background = 'var(--primary)';
+        document.getElementById('activeThumb').style.left = '20px';
+    }
+});
+</script>
+{% endblock %}

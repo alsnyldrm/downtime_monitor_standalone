@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>Dashboard</h2>
+    {% if user.role.value in ('admin', 'editor') %}
+    <a href="/monitors/new" class="btn btn-primary btn-sm">+ Yeni Monitör</a>
+    {% endif %}
+</div>
+
+<!-- 8 WIDGETS -->
+<div class="widget-grid">
+    <div class="widget">
+        <div class="widget-accent accent-blue"></div>
+        <div class="widget-label">Toplam Monitör</div>
+        <div class="widget-value">{{ total }}</div>
+        <div class="widget-sub">Aktif takipte</div>
+    </div>
+    <div class="widget">
+        <div class="widget-accent accent-up"></div>
+        <div class="widget-label">Çalışıyor</div>
+        <div class="widget-value" id="stat-up" style="color:#10b981;">{{ up_count }}</div>
+        <div class="widget-sub">UP durumunda</div>
+    </div>
+    <div class="widget">
+        <div class="widget-accent accent-down"></div>
+        <div class="widget-label">Çalışmıyor</div>
+        <div class="widget-value" id="stat-down" style="color:#ef4444;">{{ down_count }}</div>
+        <div class="widget-sub">DOWN durumunda</div>
+    </div>
+    <div class="widget">
+        <div class="widget-accent accent-pause"></div>
+        <div class="widget-label">Duraklatıldı</div>
+        <div class="widget-value" style="color:#f59e0b;">{{ paused_count + pending_count }}</div>
+        <div class="widget-sub">Bekleniyor / Duraklatıldı</div>
+    </div>
+    <div class="widget">
+        <div class="widget-accent accent-purple"></div>
+        <div class="widget-label">Ort. Yanıt Süresi</div>
+        <div class="widget-value">{% if avg_rt %}{{ "%.0f"|format(avg_rt) }}<span style="font-size:14px;font-weight:400;">ms</span>{% else %}-{% endif %}</div>
+        <div class="widget-sub">Son 24 saat (UP kontroller)</div>
+    </div>
+    <div class="widget">
+        <div class="widget-accent accent-pink"></div>
+        <div class="widget-label">Aktif Olaylar</div>
+        <div class="widget-value" style="color:{% if active_incidents_count > 0 %}#ef4444{% else %}#10b981{% endif %};">{{ active_incidents_count }}</div>
+        <div class="widget-sub">Devam eden kesinti</div>
+    </div>
+    <div class="widget">
+        <div class="widget-accent accent-teal"></div>
+        <div class="widget-label">24s Kontrol</div>
+        <div class="widget-value">{{ checks_24h }}</div>
+        <div class="widget-sub">{{ failures_24h }} hata, {{ checks_24h - failures_24h }} başarılı</div>
+    </div>
+    <div class="widget">
+        <div class="widget-accent accent-orange"></div>
+        <div class="widget-label">24s Başarı Oranı</div>
+        <div class="widget-value">{% if success_rate_24h is not none %}{{ "%.1f"|format(success_rate_24h) }}<span style="font-size:16px;font-weight:400;">%</span>{% else %}-{% endif %}</div>
+        <div class="widget-sub">Tüm monitörler</div>
+    </div>
+</div>
+
+<!-- MONITOR LIST -->
+<div class="section-header">
+    <h2 style="font-size:16px;">Monitörler</h2>
+    <span style="font-size:12px;color:var(--text-muted);">Son 50 kontrol gösteriliyor</span>
+</div>
+
+{% if monitors|length == 0 %}
+<div class="card"><div class="empty-state">Henüz monitör eklenmedi. <a href="/monitors/new">Yeni monitör ekle</a></div></div>
+{% else %}
+<div class="monitor-list">
+    {% for item in monitors %}
+    {% set m = item.monitor %}
+    <a href="/monitors/{{ m.id }}" class="monitor-row">
+        <div class="monitor-status">
+            <span class="dot dot-{{ m.status.value if m.status else 'pending' }}"></span>
+        </div>
+        <div class="monitor-info">
+            <div class="monitor-name">{{ m.name }}</div>
+            <div class="monitor-url">{{ m.type.value|upper }} · {{ m.url[:70] }}{% if m.url|length > 70 %}…{% endif %}</div>
+        </div>
+        <div class="monitor-meta">
+            <span class="uptime-badge {% if m.uptime_percentage and m.uptime_percentage >= 99 %}up{% elif m.uptime_percentage and m.uptime_percentage >= 95 %}warn{% else %}down{% endif %}">{{ "%.2f"|format(m.uptime_percentage or 0) }}%</span>
+        </div>
+        <div class="monitor-meta">
+            {% if m.last_response_time %}<span class="rt">{{ "%.0f"|format(m.last_response_time) }}ms</span>{% else %}<span class="rt">-</span>{% endif %}
+        </div>
+        <div class="monitor-heartbeat">
+            {% for log in item.logs[-50:] %}
+            <div class="hb-pip {% if log.status.value == 'up' %}hb-up{% else %}hb-down{% endif %}" title="{{ log.checked_at.strftime('%H:%M') }}: {{ log.status.value }}"></div>
+            {% endfor %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- RECENT INCIDENTS -->
+{% if recent_incidents|length > 0 %}
+<div class="section-header" style="margin-top:24px;">
+    <h2 style="font-size:16px;">Son Olaylar</h2>
+</div>
+<div class="card">
+    <div class="card-body" style="padding:0;overflow-x:auto;">
+        <table class="table">
+            <thead><tr><th>Monitör</th><th>Başlangıç</th><th>Bitiş</th><th>Süre</th><th>Sebep</th></tr></thead>
+            <tbody>
+                {% for inc in recent_incidents %}
+                <tr>
+                    <td><strong>{{ inc.monitor.name if inc.monitor else '-' }}</strong></td>
+                    <td>{{ inc.started_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>{% if inc.ended_at %}{{ inc.ended_at.strftime('%d.%m.%Y %H:%M') }}{% else %}<span class="badge badge-down">Devam Ediyor</span>{% endif %}</td>
+                    <td>{% if inc.duration_seconds %}{{ (inc.duration_seconds // 60) }}dk{% else %}-{% endif %}</td>
+                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);">{{ (inc.reason or '-')[:80] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+setInterval(async()=>{
+    try{
+        const r=await fetch('/api/status');
+        if(r.ok){
+            const d=await r.json();
+            const u=document.getElementById('stat-up');
+            const dn=document.getElementById('stat-down');
+            if(u)u.textContent=d.up;
+            if(dn)dn.textContent=d.down;
+        }
+    }catch(e){}
+},30000);
+</script>
+{% endblock %}
+

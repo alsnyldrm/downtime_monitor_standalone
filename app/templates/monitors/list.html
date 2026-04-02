@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Monitörler - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>Monitörler</h2>
+    <div style="display:flex;gap:12px;align-items:center;">
+    {% if user.role.value in ('admin', 'editor') %}
+    <a href="/monitors/new" class="btn btn-primary btn-sm">+ Yeni Monitör</a>
+    {% endif %}
+    </div>
+</div>
+
+{% if monitors|length > 0 %}
+<div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <div style="position:relative;flex:1;min-width:220px;max-width:420px;">
+        <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.45;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="monitorSearch" placeholder="Monitör ara (ad, url, tip, durum...)" style="width:100%;padding:9px 12px 9px 36px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;outline:none;" autocomplete="off">
+    </div>
+    <div style="display:flex;gap:6px;" id="statusFilters">
+        <button type="button" class="btn btn-sm status-filter active" data-status="all">Hepsi <span id="countAll" class="filter-count">{{ monitors|length }}</span></button>
+        <button type="button" class="btn btn-sm status-filter" data-status="up">UP</button>
+        <button type="button" class="btn btn-sm status-filter" data-status="down">DOWN</button>
+        <button type="button" class="btn btn-sm status-filter" data-status="pending">PENDING</button>
+        <button type="button" class="btn btn-sm status-filter" data-status="paused">PAUSED</button>
+    </div>
+</div>
+{% endif %}
+
+{% if monitors|length == 0 %}
+<div class="empty-state">Henüz monitör yok.</div>
+{% else %}
+<div id="noResults" style="display:none;padding:32px;text-align:center;color:var(--muted);font-size:15px;">Aramayla eşleşen monitör bulunamadı.</div>
+<table class="table" id="monitorTable">
+    <thead>
+        <tr><th></th><th>Ad</th><th>Tip</th><th>URL</th><th>Durum</th><th>Uptime</th><th>Yanıt</th><th>Aralık</th>{% if user.role.value in ('admin','editor') %}<th>İşlem</th>{% endif %}</tr>
+    </thead>
+    <tbody>
+        {% for m in monitors %}
+        <tr data-name="{{ m.name|lower }}" data-url="{{ m.url|lower }}" data-type="{{ m.type.value|lower }}" data-status="{{ m.status.value if m.status else 'pending' }}">
+            <td><span class="dot dot-{{ m.status.value if m.status else 'pending' }}"></span></td>
+            <td><a href="/monitors/{{ m.id }}">{{ m.name }}</a></td>
+            <td>{{ m.type.value|upper }}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.url[:40] }}</td>
+            <td>
+                {% if m.status and m.status.value == 'up' %}<span class="badge badge-up">UP</span>
+                {% elif m.status and m.status.value == 'down' %}<span class="badge badge-down">DOWN</span>
+                {% elif m.status and m.status.value == 'paused' %}<span class="badge badge-warn">PAUSED</span>
+                {% else %}<span class="badge badge-muted">PENDING</span>{% endif %}
+            </td>
+            <td>{{ "%.2f"|format(m.uptime_percentage or 0) }}%</td>
+            <td>{% if m.last_response_time %}{{ "%.0f"|format(m.last_response_time) }}ms{% else %}-{% endif %}</td>
+            <td>{{ m.interval }}s</td>
+            {% if user.role.value in ('admin','editor') %}
+            <td><a href="/monitors/{{ m.id }}/edit" class="btn btn-sm">Düzenle</a></td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<style>
+.status-filter{opacity:.6;transition:opacity .15s;}
+.status-filter.active{opacity:1;background:var(--primary);color:#fff;}
+.status-filter:hover{opacity:.9;}
+.filter-count{margin-left:4px;font-size:11px;opacity:.7;}
+</style>
+<script>
+(function(){
+    var input=document.getElementById('monitorSearch');
+    var table=document.getElementById('monitorTable');
+    var noRes=document.getElementById('noResults');
+    var filters=document.getElementById('statusFilters');
+    if(!input||!table)return;
+    var rows=Array.from(table.querySelectorAll('tbody tr'));
+    var activeStatus='all';
+
+    function applyFilter(){
+        var q=input.value.toLowerCase().trim();
+        var visible=0;
+        rows.forEach(function(r){
+            var name=r.getAttribute('data-name')||'';
+            var url=r.getAttribute('data-url')||'';
+            var type=r.getAttribute('data-type')||'';
+            var status=r.getAttribute('data-status')||'';
+            var matchText=!q||(name.indexOf(q)!==-1||url.indexOf(q)!==-1||type.indexOf(q)!==-1||status.indexOf(q)!==-1);
+            var matchStatus=(activeStatus==='all')||status===activeStatus;
+            if(matchText&&matchStatus){r.style.display='';visible++;}else{r.style.display='none';}
+        });
+        if(noRes)noRes.style.display=visible===0?'block':'none';
+        if(table)table.style.display=visible===0?'none':'';
+    }
+
+    input.addEventListener('input',applyFilter);
+
+    if(filters){
+        filters.addEventListener('click',function(e){
+            var btn=e.target.closest('.status-filter');
+            if(!btn)return;
+            filters.querySelectorAll('.status-filter').forEach(function(b){b.classList.remove('active');});
+            btn.classList.add('active');
+            activeStatus=btn.getAttribute('data-status');
+            applyFilter();
+        });
+    }
+
+    // Ctrl+K / Cmd+K ile arama
+    document.addEventListener('keydown',function(e){
+        if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();input.focus();input.select();}
+        if(e.key==='Escape'&&document.activeElement===input){input.value='';applyFilter();input.blur();}
+    });
+})();
+</script>
+{% endblock %}

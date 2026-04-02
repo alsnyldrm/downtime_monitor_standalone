@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{% if group %}Grubu Düzenle{% else %}Yeni Grup{% endif %} - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>{% if group %}Grubu Düzenle{% else %}Yeni Grup Oluştur{% endif %}</h2>
+    <a href="/groups" class="btn btn-sm">← Geri</a>
+</div>
+<div class="card" style="max-width:500px;">
+    <div class="card-body">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        <form method="post">
+            <div class="form-group">
+                <label>Grup Adı</label>
+                <input type="text" name="name" class="form-control" value="{{ group.name if group else '' }}" required placeholder="Örn: Üretim Sunucuları">
+            </div>
+            <div class="form-group">
+                <label>Açıklama (opsiyonel)</label>
+                <textarea name="description" class="form-control" rows="3" placeholder="Grup hakkında kısa açıklama">{{ group.description if group and group.description else '' }}</textarea>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:8px;">
+                <button type="submit" class="btn btn-primary">{% if group %}Güncelle{% else %}Oluştur{% endif %}</button>
+                <a href="/groups" class="btn btn-sm">İptal</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

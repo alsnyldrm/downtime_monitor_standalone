@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş - FBU Downtime Monitor</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+    <style>
+        :root{--primary:#003366;--secondary:#FFD700;--accent:#E30A17;--microsoft-blue:#0078d4}
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+        body{background:url('/static/img/background.png') center/cover no-repeat;min-height:100vh;display:flex;justify-content:center;align-items:center}
+        .container{width:100%;max-width:1200px;display:flex;box-shadow:0 15px 30px rgba(0,0,0,.1);border-radius:12px;overflow:hidden}
+        .left-panel{flex:1;background:linear-gradient(to bottom,rgba(0,51,102,.8),rgba(0,51,102,.95));color:#fff;padding:30px 30px 30px;padding-top:60px;display:flex;flex-direction:column;justify-content:space-between}
+        .fbu-text h1{font-size:38px;font-weight:700;margin-bottom:15px}
+        .welcome-text{margin:40px 0}
+        .welcome-text h2{font-size:32px;font-weight:700;margin-bottom:15px;position:relative}
+        .welcome-text h2:after{content:'';position:absolute;left:0;bottom:-10px;width:475px;height:4px;background:var(--secondary)}
+        .welcome-text p{font-size:16px;line-height:1.6;opacity:.9;margin-top:20px}
+        .feature-list{margin-top:30px}
+        .feature-item{display:flex;align-items:center;margin-bottom:15px}
+        .feature-icon{width:36px;height:36px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:15px}
+        .feature-text{font-size:15px}
+        .right-panel{flex:1;background:#fff;padding:40px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+        .login-container{width:100%;max-width:380px;text-align:center}
+        .university-logo-small{display:block;width:120px;height:auto;margin:0 auto 20px}
+        .login-header{text-align:center;margin-bottom:40px}
+        .login-header h2{font-size:28px;color:var(--primary);margin-bottom:10px}
+        .login-header p{color:#6c757d;font-size:15px;max-width:380px;margin:0 auto}
+        .microsoft-button{width:100%;padding:15px;background:var(--microsoft-blue);color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:600;cursor:pointer;transition:all .3s;margin-top:20px;display:flex;align-items:center;justify-content:center;text-decoration:none}
+        .microsoft-button:hover{background:#106ebe;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,.1);color:#fff}
+        .microsoft-icon{margin-right:10px}
+        .login-info{margin-top:30px;text-align:center;color:#6c757d;font-size:14px;line-height:1.5;max-width:380px}
+        .additional-links{text-align:center;margin-top:30px;font-size:14px;color:#6c757d}
+        .additional-links a{color:var(--primary);text-decoration:none;cursor:pointer;transition:all .3s}
+        .additional-links a:hover{text-decoration:underline}
+        .custom-input{width:100%;padding:12px 15px;margin-bottom:15px;border:1px solid #ced4da;border-radius:6px;font-size:14px;outline:none;transition:border-color .3s}
+        .custom-input:focus{border-color:var(--primary)}
+        .custom-submit-btn{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;transition:background .3s}
+        .custom-submit-btn:hover{background:#002244}
+        .alert{padding:10px;border-radius:6px;margin-bottom:10px;font-size:14px;text-align:center}
+        .alert-danger{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
+        .bottom-info{font-size:14px;opacity:.7}
+        @media(max-width:992px){.container{flex-direction:column}.left-panel{padding:20px;min-height:350px}.right-panel{padding:20px}.fbu-text h1{font-size:30px}.welcome-text h2{font-size:26px}.welcome-text h2:after{width:300px}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div>
+                <div class="fbu-text"><h1>Fenerbahçe Üniversitesi</h1></div>
+                <div class="welcome-text">
+                    <h2>Downtime Monitor<br>Sistemine Hoş Geldiniz</h2>
+                    <p>Fenerbahçe Üniversitesi Hizmet İzleme Sistemi'ne erişim sağlamaktasınız. Tüm hizmetlerinizin durumunu gerçek zamanlı takip edin.</p>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                        <div class="feature-text">HTTP/HTTPS İzleme</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></div>
+                        <div class="feature-text">Ping & Port İzleme</div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+                        <div class="feature-text">Olay Yönetimi & Bildirimler</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bottom-info">&copy; 2026 Fenerbahçe Üniversitesi - Bilgi Teknolojileri</div>
+        </div>
+        <div class="right-panel">
+            <div class="login-container">
+                <img src="/static/img/fbu.png" alt="FBU Logo" class="university-logo-small">
+                <div id="sso-view">
+                    <div class="login-header">
+                        <h2>Downtime Monitor</h2>
+                        <p>Fenerbahçe Üniversitesi hesabınızla sisteme giriş yapın</p>
+                    </div>
+                    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+                    <a href="/saml/login" class="microsoft-button">
+                        <svg class="microsoft-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 23 23"><rect x="1" y="1" width="10" height="10" fill="#f25022"/><rect x="12" y="1" width="10" height="10" fill="#7fba00"/><rect x="1" y="12" width="10" height="10" fill="#00a4ef"/><rect x="12" y="12" width="10" height="10" fill="#ffb900"/></svg>
+                        Microsoft ile Giriş Yap
+                    </a>
+                    <div class="login-info"><p>Üniversite Microsoft hesabınızla güvenli bir şekilde giriş yapacaksınız.</p></div>
+                    <div class="additional-links"><a onclick="document.getElementById('sso-view').style.display='none';document.getElementById('local-view').style.display='block';">Yerel Giriş (Sistem Yöneticisi)</a></div>
+                </div>
+                <div id="local-view" style="display:none;width:100%;text-align:left;">
+                    <div class="login-header" style="margin-bottom:20px;"><h2>Yerel Yönetici Girişi</h2></div>
+                    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+                    <form method="post" action="/login">
+                        <label style="font-size:14px;color:var(--primary);font-weight:600;margin-bottom:5px;display:block;">Kullanıcı Adı</label>
+                        <input type="text" name="username" class="custom-input" placeholder="Admin kullanıcı adı" required autocomplete="username">
+                        <label style="font-size:14px;color:var(--primary);font-weight:600;margin-bottom:5px;margin-top:10px;display:block;">Şifre</label>
+                        <input type="password" name="password" class="custom-input" placeholder="Şifreniz" required autocomplete="current-password">
+                        <input type="submit" value="Giriş Yap" class="custom-submit-btn" style="margin-top:5px;">
+                    </form>
+                    <div class="additional-links" style="margin-top:20px;"><a onclick="document.getElementById('local-view').style.display='none';document.getElementById('sso-view').style.display='block';">← SSO Girişine Dön</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

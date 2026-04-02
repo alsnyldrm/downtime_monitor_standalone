@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Raporlar - FBU Downtime Monitor{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>Raporlar</h2>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:12px;color:var(--text-muted);">Son 30 gün verisi</span>
+        <div style="display:flex;gap:6px;">
+            <a href="/reports/export?format=csv" class="btn btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:5px 12px;background:var(--card-bg);border:1px solid var(--border);color:var(--text);border-radius:6px;text-decoration:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                CSV
+            </a>
+            <a href="/reports/export?format=excel" class="btn btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:5px 12px;background:#10b981;border:1px solid #10b981;color:#fff;border-radius:6px;text-decoration:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Excel
+            </a>
+            <a href="/reports/export?format=pdf" class="btn btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:5px 12px;background:#ef4444;border:1px solid #ef4444;color:#fff;border-radius:6px;text-decoration:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PDF
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- SUMMARY STATS -->
+<div class="report-grid">
+    <div class="report-stat">
+        <div class="report-stat-label">Aktif Olay</div>
+        <div class="report-stat-value" style="color:{% if active_incidents > 0 %}#ef4444{% else %}#10b981{% endif %};">{{ active_incidents }}</div>
+        <div class="report-stat-sub">Şu anda devam eden</div>
+    </div>
+    <div class="report-stat">
+        <div class="report-stat-label">30 Günlük Olay</div>
+        <div class="report-stat-value">{{ total_incidents_30d }}</div>
+        <div class="report-stat-sub">Toplam kesinti sayısı</div>
+    </div>
+    <div class="report-stat">
+        <div class="report-stat-label">Ort. Olay Süresi</div>
+        <div class="report-stat-value">{% if avg_incident_duration %}{{ (avg_incident_duration // 60)|int }}dk{% else %}—{% endif %}</div>
+        <div class="report-stat-sub">Son 30 gün ortalaması</div>
+    </div>
+    <div class="report-stat">
+        <div class="report-stat-label">24s Kontrol</div>
+        <div class="report-stat-value">{{ checks_24h }}</div>
+        <div class="report-stat-sub">{{ failures_24h }} hata</div>
+    </div>
+    <div class="report-stat">
+        <div class="report-stat-label">7 Günlük Kontrol</div>
+        <div class="report-stat-value">{{ checks_7d }}</div>
+        <div class="report-stat-sub">{{ failures_7d }} hata</div>
+    </div>
+    <div class="report-stat">
+        <div class="report-stat-label">7 Günlük Başarı</div>
+        <div class="report-stat-value">{% if checks_7d > 0 %}{{ "%.1f"|format((checks_7d - failures_7d) / checks_7d * 100) }}%{% else %}—{% endif %}</div>
+        <div class="report-stat-sub">Tüm monitörler</div>
+    </div>
+</div>
+
+<!-- DAILY CHART -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+    <div class="card">
+        <div class="card-header">Son 7 Gün - Günlük Kontroller</div>
+        <div class="card-body"><canvas id="dailyChart" height="120"></canvas></div>
+    </div>
+    <div class="card">
+        <div class="card-header">En Yavaş 5 Monitör (30 Gün Ortalaması)</div>
+        <div class="card-body" style="padding:0;">
+            <table class="table table-compact">
+                <thead><tr><th>Monitör</th><th>Ort. Yanıt</th><th>Uptime</th></tr></thead>
+                <tbody>
+                    {% for s in slow_monitors %}
+                    <tr>
+                        <td><a href="/monitors/{{ s.monitor.id }}">{{ s.monitor.name }}</a></td>
+                        <td><strong>{{ "%.0f"|format(s.avg_response_time) }}ms</strong></td>
+                        <td>{% if s.uptime_pct is not none %}{{ "%.2f"|format(s.uptime_pct) }}%{% else %}—{% endif %}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Yeterli veri yok</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- UPTIME SUMMARY TABLE -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">Uptime Özeti — Son 30 Gün (Monitör Bazlı)</div>
+    <div class="card-body" style="padding:0;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Monitör</th>
+                    <th>Tür</th>
+                    <th>Durum</th>
+                    <th>Toplam Kontrol</th>
+                    <th>Başarılı</th>
+                    <th>Uptime %</th>
+                    <th>Ort. Yanıt</th>
+                    <th>Uptime Çubuğu</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in uptime_data %}
+                <tr>
+                    <td><a href="/monitors/{{ u.monitor.id }}"><strong>{{ u.monitor.name }}</strong></a></td>
+                    <td><span class="badge badge-muted">{{ u.monitor.type.value|upper }}</span></td>
+                    <td>
+                        {% if u.monitor.status and u.monitor.status.value == 'up' %}<span class="badge badge-up">UP</span>
+                        {% elif u.monitor.status and u.monitor.status.value == 'down' %}<span class="badge badge-down">DOWN</span>
+                        {% elif u.monitor.status and u.monitor.status.value == 'paused' %}<span class="badge badge-warn">PAUSED</span>
+                        {% else %}<span class="badge badge-muted">PENDING</span>{% endif %}
+                    </td>
+                    <td>{{ u.total_checks }}</td>
+                    <td>{{ u.up_checks }}</td>
+                    <td>
+                        {% if u.uptime_pct is not none %}
+                        <strong style="color:{% if u.uptime_pct >= 99 %}#10b981{% elif u.uptime_pct >= 95 %}#f59e0b{% else %}#ef4444{% endif %};">
+                            {{ "%.3f"|format(u.uptime_pct) }}%
+                        </strong>
+                        {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+                    </td>
+                    <td>{% if u.avg_response_time %}{{ "%.0f"|format(u.avg_response_time) }}ms{% else %}—{% endif %}</td>
+                    <td style="width:120px;">
+                        {% if u.uptime_pct is not none %}
+                        <div class="uptime-bar">
+                            <div class="uptime-bar-fill {% if u.uptime_pct >= 99 %}fill-up{% elif u.uptime_pct >= 95 %}fill-warn{% else %}fill-down{% endif %}" style="width:{{ u.uptime_pct }}%;"></div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="empty-state">Henüz veri yok</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- INCIDENT HISTORY -->
+<div class="card">
+    <div class="card-header">Olay Geçmişi — Son 30 Gün</div>
+    <div class="card-body" style="padding:0;">
+        {% if recent_incidents|length == 0 %}
+        <div class="empty-state" style="padding:32px;">Son 30 günde olay kaydedilmedi</div>
+        {% else %}
+        <table class="table">
+            <thead><tr><th>Monitör</th><th>Başlangıç</th><th>Bitiş</th><th>Süre</th><th>Sebep</th></tr></thead>
+            <tbody>
+                {% for inc in recent_incidents %}
+                <tr>
+                    <td><a href="/monitors/{{ inc.monitor_id }}"><strong>{{ inc.monitor.name if inc.monitor else '#' + inc.monitor_id|string }}</strong></a></td>
+                    <td>{{ inc.started_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>{% if inc.ended_at %}{{ inc.ended_at.strftime('%d.%m.%Y %H:%M') }}{% else %}<span class="badge badge-down">Devam Ediyor</span>{% endif %}</td>
+                    <td>{% if inc.duration_seconds %}{{ (inc.duration_seconds // 60) }}dk {{ (inc.duration_seconds % 60) }}sn{% else %}—{% endif %}</td>
+                    <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);">{{ inc.reason or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+    const daily = {{ daily_stats | tojson }};
+    const labels = daily.map(d=>d.date);
+    const success = daily.map(d=>d.success);
+    const failures = daily.map(d=>d.failures);
+    const ctx = document.getElementById('dailyChart');
+    if(!ctx) return;
+    const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const textColor = isDark ? '#8b8fa3' : '#6c757d';
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {label:'Başarılı', data:success, backgroundColor:'#10b981', borderRadius:3},
+                {label:'Hata', data:failures, backgroundColor:'#ef4444', borderRadius:3}
+            ]
+        },
+        options: {
+            responsive:true,
+            plugins:{legend:{labels:{color:textColor,font:{size:11}}}},
+            scales:{
+                x:{stacked:true, ticks:{color:textColor}, grid:{color:gridColor}},
+                y:{stacked:true, ticks:{color:textColor}, grid:{color:gridColor}, beginAtZero:true}
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}

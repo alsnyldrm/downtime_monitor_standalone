@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}{{ monitor.name }} - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<!-- Üst başlık -->
+<div class="section-header">
+    <div style="display:flex;align-items:center;gap:12px;">
+        <a href="/monitors" class="btn btn-sm">← Geri</a>
+        <span class="dot dot-lg dot-{{ monitor.status.value if monitor.status else 'pending' }}"></span>
+        <div>
+            <h2 style="margin:0;">{{ monitor.name }}</h2>
+            <small style="color:var(--text-muted);">{{ monitor.type.value|upper }} · <a href="{{ monitor.url }}" target="_blank" style="color:var(--accent-blue);">{{ monitor.url }}</a>
+            {% if monitor.group %} · <span style="color:var(--text-muted);">{{ monitor.group.name }}</span>{% endif %}
+            </small>
+        </div>
+    </div>
+    {% if user.role.value in ('admin', 'editor') %}
+    <div style="display:flex;gap:8px;">
+        <form method="post" action="/monitors/{{ monitor.id }}/toggle" style="display:inline;">
+            <button class="btn btn-sm">{% if monitor.is_active %}Duraklat{% else %}Başlat{% endif %}</button>
+        </form>
+        <a href="/monitors/{{ monitor.id }}/edit" class="btn btn-primary btn-sm">Düzenle</a>
+        {% if user.role.value == 'admin' %}
+        <form method="post" action="/monitors/{{ monitor.id }}/delete" onsubmit="return confirm('Silmek istediğinize emin misiniz?')" style="display:inline;">
+            <button class="btn btn-danger btn-sm">Sil</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Durum Kartları -->
+<div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card">
+        <div class="stat-label">Mevcut Durum</div>
+        {% if monitor.status and monitor.status.value == 'up' %}
+            <div style="color:#10b981;font-size:22px;font-weight:700;">UP</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Çalışıyor</div>
+        {% elif monitor.status and monitor.status.value == 'down' %}
+            <div style="color:#ef4444;font-size:22px;font-weight:700;">DOWN</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Erişilemiyor</div>
+        {% elif monitor.status and monitor.status.value == 'paused' %}
+            <div style="color:#f59e0b;font-size:22px;font-weight:700;">PAUSED</div>
+        {% else %}
+            <div style="color:var(--text-muted);font-size:22px;font-weight:700;">PENDING</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Son Kontrol</div>
+        {% if monitor.last_checked_at %}
+        <div style="font-size:18px;font-weight:600;">{{ monitor.last_checked_at.strftime('%H:%M:%S') }}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">{{ monitor.interval }}s aralıkla</div>
+        {% else %}
+        <div style="font-size:18px;color:var(--text-muted);">-</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Son 24 Saat</div>
+        <div style="font-size:18px;font-weight:600;color:{% if uptime_24h is not none and uptime_24h >= 99 %}#10b981{% elif uptime_24h is not none and uptime_24h >= 95 %}#f59e0b{% else %}#ef4444{% endif %};">
+            {% if uptime_24h is not none %}{{ "%.2f"|format(uptime_24h) }}%{% else %}-{% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Uptime</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Kontrol Aralığı</div>
+        <div style="font-size:18px;font-weight:600;">
+            {% if monitor.interval < 60 %}{{ monitor.interval }}s
+            {% elif monitor.interval < 3600 %}{{ monitor.interval // 60 }}dk
+            {% else %}{{ monitor.interval // 3600 }}sa{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Uptime Geçmişi Kartları -->
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-top:0;">
+    {% for label, val in [('Son 7 Gün', uptime_7d), ('Son 30 Gün', uptime_30d), ('Tüm Zamanlar', monitor.uptime_percentage)] %}
+    <div class="stat-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="stat-label">{{ label }}</div>
+            <strong style="color:{% if val is not none and val >= 99 %}#10b981{% elif val is not none and val >= 95 %}#f59e0b{% else %}#ef4444{% endif %};">
+                {% if val is not none %}{{ "%.2f"|format(val) }}%{% else %}-{% endif %}
+            </strong>
+        </div>
+        {% if val is not none %}
+        <div style="margin-top:8px;height:6px;border-radius:3px;background:var(--border);overflow:hidden;">
+            <div style="height:100%;width:{{ val }}%;background:{% if val >= 99 %}#10b981{% elif val >= 95 %}#f59e0b{% else %}#ef4444{% endif %};border-radius:3px;transition:width .5s;"></div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Yanıt Süresi Grafiği -->
+<div class="card" style="margin-top:16px;">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Yanıt Süresi Grafiği</span>
+        <div style="display:flex;gap:24px;font-size:13px;">
+            <span>Ort: <strong>{% if rt_avg %}{{ rt_avg }}ms{% else %}-{% endif %}</strong></span>
+            <span style="color:#10b981;">Min: <strong>{% if rt_min %}{{ rt_min }}ms{% else %}-{% endif %}</strong></span>
+            <span style="color:#ef4444;">Max: <strong>{% if rt_max %}{{ rt_max }}ms{% else %}-{% endif %}</strong></span>
+        </div>
+    </div>
+    <div class="card-body"><canvas id="responseChart" height="55"></canvas></div>
+</div>
+
+<!-- Alt İki Panel -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+    <!-- Son Kontroller -->
+    <div class="card">
+        <div class="card-header">Son Kontroller</div>
+        <div class="card-body" style="max-height:380px;overflow-y:auto;padding:0;">
+            <table class="table table-compact">
+                <thead><tr><th>Zaman</th><th>Durum</th><th>Yanıt</th><th>HTTP</th></tr></thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="font-size:12px;">{{ log.checked_at.strftime('%d.%m %H:%M:%S') }}</td>
+                        <td>{% if log.status.value == 'up' %}<span class="badge badge-up">UP</span>{% else %}<span class="badge badge-down">DOWN</span>{% endif %}</td>
+                        <td>{{ "%.0f"|format(log.response_time or 0) }}ms</td>
+                        <td style="color:var(--text-muted);">{{ log.status_code or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Olaylar -->
+    <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;">
+            <span>Olaylar</span>
+            <span style="font-size:12px;color:var(--text-muted);">Son {{ incidents|length }}</span>
+        </div>
+        <div class="card-body" style="max-height:380px;overflow-y:auto;padding:0;">
+            {% if incidents|length == 0 %}
+            <div class="empty-state" style="padding:32px;">Henüz olay yok 🎉</div>
+            {% else %}
+            <table class="table table-compact">
+                <thead><tr><th>Durum</th><th>Sebep</th><th>Başlangıç</th><th>Süre</th></tr></thead>
+                <tbody>
+                    {% for inc in incidents %}
+                    <tr>
+                        <td>{% if inc.ended_at %}<span class="badge badge-up" style="font-size:10px;">Çözüldü</span>{% else %}<span class="badge badge-down" style="font-size:10px;">Devam</span>{% endif %}</td>
+                        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-muted);">{{ (inc.reason or '-')[:40] }}</td>
+                        <td style="font-size:12px;">{{ inc.started_at.strftime('%d.%m %H:%M') }}</td>
+                        <td style="font-size:12px;">{% if inc.duration_seconds %}{% if inc.duration_seconds >= 3600 %}{{ inc.duration_seconds // 3600 }}sa {{ (inc.duration_seconds % 3600) // 60 }}dk{% else %}{{ inc.duration_seconds // 60 }}dk {{ inc.duration_seconds % 60 }}sn{% endif %}{% else %}-{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+async function loadChart(){
+    const r=await fetch('/monitors/{{ monitor.id }}/api/logs');
+    const logs=await r.json();
+    const labels=logs.map(l=>new Date(l.checked_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}));
+    const data=logs.map(l=>l.response_time);
+    const colors=logs.map(l=>l.status==='up'?'rgba(16,185,129,0.8)':'rgba(239,68,68,0.8)');
+    const ctx=document.getElementById('responseChart');
+    if(window._chart)window._chart.destroy();
+    window._chart=new Chart(ctx,{
+        type:'bar',
+        data:{labels,datasets:[{label:'ms',data,backgroundColor:colors,borderRadius:3,borderSkipped:false}]},
+        options:{
+            responsive:true,
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+'ms'}}},
+            scales:{
+                y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#888',callback:v=>v+'ms'}},
+                x:{grid:{display:false},ticks:{color:'#888',maxTicksLimit:12}}
+            }
+        }
+    });
+}
+loadChart();
+setInterval(loadChart,30000);
+</script>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Push Bildirim - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <div>
+        <h2 style="margin:0;">Push Bildirim Gönder</h2>
+        <small style="color:var(--text-muted);">Tüm mobil cihazlara anlık bildirim gönderin</small>
+    </div>
+</div>
+
+<!-- İstatistik -->
+<div style="display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+    <div class="card" style="flex:1;min-width:200px;">
+        <div class="card-body" style="display:flex;align-items:center;gap:14px;padding:18px;">
+            <div style="width:44px;height:44px;border-radius:12px;background:rgba(59,130,246,0.15);display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="22" height="22"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div>
+                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">{{ device_count }}</div>
+                <div style="font-size:12px;color:var(--text-muted);">Kayıtlı Cihaz</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bildirim Formu -->
+<div class="card">
+    <div class="card-header" style="display:flex;align-items:center;gap:10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" width="18" height="18"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23" stroke="none"/></svg>
+        <span>Yeni Bildirim</span>
+    </div>
+    <div class="card-body" style="padding:24px;">
+        <form id="pushForm" onsubmit="sendPush(event)">
+            <!-- Bildirim Tipi -->
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">Bildirim Tipi</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <label class="type-option" id="type-info">
+                        <input type="radio" name="type" value="info" checked style="display:none;">
+                        <div class="type-card">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            <span>Bilgi</span>
+                        </div>
+                    </label>
+                    <label class="type-option" id="type-warning">
+                        <input type="radio" name="type" value="warning" style="display:none;">
+                        <div class="type-card">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" width="20" height="20"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <span>Uyarı</span>
+                        </div>
+                    </label>
+                    <label class="type-option" id="type-incident">
+                        <input type="radio" name="type" value="incident" style="display:none;">
+                        <div class="type-card">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <span>Kesinti</span>
+                        </div>
+                    </label>
+                    <label class="type-option" id="type-recovery">
+                        <input type="radio" name="type" value="recovery" style="display:none;">
+                        <div class="type-card">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <span>Düzelme</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Başlık -->
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">Başlık</label>
+                <input type="text" id="pushTitle" required maxlength="200" placeholder="Bildirim başlığı..."
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:14px;box-sizing:border-box;">
+            </div>
+
+            <!-- Mesaj -->
+            <div style="margin-bottom:24px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">Mesaj</label>
+                <textarea id="pushMessage" required maxlength="1000" rows="4" placeholder="Bildirim mesajını yazın..."
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:14px;resize:vertical;box-sizing:border-box;font-family:inherit;"></textarea>
+                <div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:4px;">
+                    <span id="charCount">0</span>/1000
+                </div>
+            </div>
+
+            <!-- Gönder -->
+            <button type="submit" id="sendBtn"
+                style="display:flex;align-items:center;gap:8px;padding:12px 28px;border-radius:8px;border:none;background:var(--accent-blue);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                <span>Gönder</span>
+            </button>
+        </form>
+
+        <!-- Sonuç -->
+        <div id="pushResult" style="display:none;margin-top:20px;padding:16px;border-radius:10px;font-size:14px;"></div>
+    </div>
+</div>
+
+<style>
+.type-option .type-card {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 8px;
+    border: 2px solid var(--border); background: var(--bg-secondary);
+    cursor: pointer; transition: all .15s; font-size: 13px; font-weight: 500;
+    color: var(--text-secondary);
+}
+.type-option input:checked + .type-card {
+    border-color: var(--accent-blue); background: rgba(59,130,246,0.1); color: var(--text-primary);
+}
+.type-option:hover .type-card { border-color: var(--accent-blue); }
+#sendBtn:hover { opacity: .85; }
+#sendBtn:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+
+<script>
+document.getElementById('pushMessage').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length;
+});
+
+async function sendPush(e) {
+    e.preventDefault();
+    const btn = document.getElementById('sendBtn');
+    const result = document.getElementById('pushResult');
+    const title = document.getElementById('pushTitle').value.trim();
+    const message = document.getElementById('pushMessage').value.trim();
+    const type = document.querySelector('input[name="type"]:checked').value;
+
+    if (!title || !message) return;
+
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Gönderiliyor...';
+    result.style.display = 'none';
+
+    try {
+        const resp = await fetch('/notifications/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, message, type })
+        });
+        const data = await resp.json();
+
+        if (data.error && data.success === 0) {
+            result.style.background = 'rgba(239,68,68,0.1)';
+            result.style.border = '1px solid rgba(239,68,68,0.3)';
+            result.style.color = '#ef4444';
+            result.innerHTML = `<strong>Hata:</strong> ${data.error}`;
+        } else {
+            result.style.background = 'rgba(16,185,129,0.1)';
+            result.style.border = '1px solid rgba(16,185,129,0.3)';
+            result.style.color = '#10b981';
+            result.innerHTML = `<strong>Başarılı!</strong> ${data.success}/${data.total} cihaza gönderildi.` +
+                (data.failure > 0 ? ` <span style="color:#f59e0b;">(${data.failure} başarısız)</span>` : '');
+            document.getElementById('pushTitle').value = '';
+            document.getElementById('pushMessage').value = '';
+            document.getElementById('charCount').textContent = '0';
+        }
+        result.style.display = 'block';
+    } catch (err) {
+        result.style.background = 'rgba(239,68,68,0.1)';
+        result.style.border = '1px solid rgba(239,68,68,0.3)';
+        result.style.color = '#ef4444';
+        result.innerHTML = `<strong>Hata:</strong> Bağlantı hatası`;
+        result.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'Gönder';
+    }
+}
+</script>
+{% endblock %}

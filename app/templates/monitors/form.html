@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{% if monitor %}Monitör Düzenle{% else %}Yeni Monitör{% endif %} - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>{% if monitor %}{{ monitor.name }} Düzenle{% else %}Yeni Monitör{% endif %}</h2>
+    <a href="{% if monitor %}/monitors/{{ monitor.id }}{% else %}/monitors{% endif %}" class="btn btn-sm">← Geri</a>
+</div>
+
+<form method="post" style="max-width:700px;">
+    <!-- Temel Bilgiler -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div class="form-group">
+                <label style="font-weight:600;">Ad</label>
+                <input type="text" name="name" class="form-control" value="{{ monitor.name if monitor else '' }}" required placeholder="Örn: FBU Ana Sayfa">
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;">Tür</label>
+                <select name="type" class="form-control" id="monitorType" onchange="toggleFields()">
+                    {% for t in ['http','https','ping','port','keyword'] %}
+                    <option value="{{ t }}" {% if monitor and monitor.type.value == t %}selected{% endif %}>{{ t|upper }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-weight:600;">URL / IP</label>
+                <input type="text" name="url" class="form-control" value="{{ monitor.url if monitor else '' }}" required placeholder="https://example.com veya 192.168.1.1">
+            </div>
+            <div class="form-group" id="portGroup" style="display:none;">
+                <label>Port</label>
+                <input type="number" name="port" class="form-control" value="{{ monitor.port if monitor and monitor.port else '' }}" placeholder="443">
+            </div>
+            <div class="form-group" id="keywordGroup" style="display:none;">
+                <label>Aranacak Kelime</label>
+                <input type="text" name="keyword" class="form-control" value="{{ monitor.keyword if monitor and monitor.keyword else '' }}" placeholder="Sayfada aranacak kelime">
+            </div>
+        </div>
+    </div>
+
+    <!-- Grup & Bildirim -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label style="font-weight:600;">Grup</label>
+                    <select name="group_id" class="form-control">
+                        <option value="">— Gruba atama —</option>
+                        {% for g in groups %}
+                        <option value="{{ g.id }}" {% if monitor and monitor.group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:600;">Bildirim E-posta</label>
+                    <input type="email" name="notification_email" class="form-control" value="{{ monitor.notification_email if monitor and monitor.notification_email else '' }}" placeholder="alarm@fbu.edu.tr">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kontrol Aralığı -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <label style="font-weight:600;">Kontrol Aralığı</label>
+            <p style="font-size:13px;color:var(--text-muted);margin:4px 0 12px;">Her <strong id="intervalLabel">60 saniye</strong> kontrol edilecek.</p>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <input type="range" id="intervalSlider" min="5" max="86400" step="5" value="{{ monitor.interval if monitor else 60 }}" style="flex:1;accent-color:var(--accent-blue);" oninput="updateIntervalFromSlider(this.value)">
+                <input type="number" id="intervalInput" min="5" max="86400" step="5" value="{{ monitor.interval if monitor else 60 }}" style="width:88px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font-size:14px;" oninput="updateIntervalFromInput(this.value)">
+                <span style="font-size:13px;color:var(--text-muted);white-space:nowrap;">sn</span>
+            </div>
+            <input type="hidden" name="interval" id="intervalHidden" value="{{ monitor.interval if monitor else 60 }}">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:6px;">
+                <span>5sn</span><span>1dk</span><span>5dk</span><span>30dk</span><span>1sa</span><span>12sa</span><span>24sa</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zaman Aşımı -->
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-body">
+            <label style="font-weight:600;">İstek Zaman Aşımı</label>
+            <p style="font-size:13px;color:var(--text-muted);margin:4px 0 12px;">Zaman aşımı: <strong id="timeoutLabel">30 saniye</strong>. Bu sürede yanıt alınamazsa DOWN sayılır.</p>
+            <input type="range" id="timeoutSlider" min="5" max="60" step="5" value="{{ monitor.timeout if monitor else 30 }}" style="width:100%;accent-color:var(--accent-blue);" oninput="updateTimeout(this.value)">
+            <input type="hidden" name="timeout" id="timeoutHidden" value="{{ monitor.timeout if monitor else 30 }}">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:6px;">
+                <span>5sn</span><span>15sn</span><span>30sn</span><span>45sn</span><span>60sn</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gelişmiş Ayarlar -->
+    <div class="card" style="margin-bottom:12px;" id="advancedCard">
+        <div class="card-body">
+            <div style="cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="toggleAdvanced()">
+                <svg id="advArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+                <strong>Gelişmiş Ayarlar</strong>
+            </div>
+            <div id="advancedBody" style="margin-top:16px;">
+                <div class="form-group">
+                    <label style="font-weight:600;">HTTP Metodu</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                        {% for m in ['HEAD','GET','POST','PUT','PATCH','DELETE','OPTIONS'] %}
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;"
+                               class="method-btn {% if (monitor and monitor.http_method == m) or (not monitor and m == 'GET') %}method-active{% endif %}">
+                            <input type="radio" name="http_method" value="{{ m }}" {% if (monitor and monitor.http_method == m) or (not monitor and m == 'GET') %}checked{% endif %} style="display:none;" onchange="selectMethod(this)">
+                            {{ m }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:16px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <input type="checkbox" name="follow_redirects" id="followRedirects" {% if not monitor or monitor.follow_redirects %}checked{% endif %} style="display:none;">
+                        <div class="toggle-track" id="followTrack" onclick="toggleFollow(event)">
+                            <div class="toggle-thumb" id="followThumb"></div>
+                        </div>
+                        <div>
+                            <strong>Yönlendirmeleri takip et</strong>
+                            <div style="font-size:12px;color:var(--text-muted);">Kapalıysa, 3xx yanıt kodları DOWN sayılır.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px;">
+        <button type="submit" class="btn btn-primary">{% if monitor %}Güncelle{% else %}Monitör Oluştur{% endif %}</button>
+        <a href="{% if monitor %}/monitors/{{ monitor.id }}{% else %}/monitors{% endif %}" class="btn btn-sm">İptal</a>
+    </div>
+</form>
+
+<style>
+.method-btn { transition: all .15s; }
+.method-active { background: var(--accent-blue) !important; border-color: var(--accent-blue) !important; color: #fff !important; }
+.toggle-track { width:42px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background .2s; }
+.toggle-thumb { width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3); }
+</style>
+
+<script>
+function toggleFields(){
+    const t=document.getElementById('monitorType').value;
+    document.getElementById('portGroup').style.display=t==='port'?'':'none';
+    document.getElementById('keywordGroup').style.display=t==='keyword'?'':'none';
+    document.getElementById('advancedCard').style.display=(t==='http'||t==='https'||t==='keyword')?'':'none';
+}
+function intervalLabel(n){
+    if(n<60) return n+' saniye';
+    if(n<3600) return Math.round(n/60)+' dakika';
+    return Math.round(n/3600)+' saat';
+}
+function updateIntervalFromSlider(v){
+    const n=parseInt(v);
+    document.getElementById('intervalHidden').value=n;
+    document.getElementById('intervalInput').value=n;
+    document.getElementById('intervalLabel').textContent=intervalLabel(n);
+}
+function updateIntervalFromInput(v){
+    let n=parseInt(v)||5;
+    if(n<5) n=5;
+    if(n>86400) n=86400;
+    document.getElementById('intervalHidden').value=n;
+    document.getElementById('intervalSlider').value=n;
+    document.getElementById('intervalLabel').textContent=intervalLabel(n);
+}
+function updateTimeout(v){
+    document.getElementById('timeoutHidden').value=v;
+    document.getElementById('timeoutLabel').textContent=v+' saniye';
+}
+function selectMethod(el){
+    document.querySelectorAll('.method-btn').forEach(b=>b.classList.remove('method-active'));
+    el.closest('label').classList.add('method-active');
+}
+function toggleFollow(e){
+    e.stopPropagation();
+    const chk=document.getElementById('followRedirects');
+    chk.checked=!chk.checked;
+    syncFollow();
+}
+function syncFollow(){
+    const chk=document.getElementById('followRedirects');
+    const track=document.getElementById('followTrack');
+    const thumb=document.getElementById('followThumb');
+    track.style.background=chk.checked?'var(--accent-blue)':'var(--border)';
+    thumb.style.left=chk.checked?'20px':'2px';
+}
+let advOpen=true;
+function toggleAdvanced(){
+    advOpen=!advOpen;
+    document.getElementById('advancedBody').style.display=advOpen?'':'none';
+    document.getElementById('advArrow').style.transform=advOpen?'':'rotate(-90deg)';
+}
+toggleFields();
+updateIntervalFromSlider(document.getElementById('intervalSlider').value);
+updateTimeout(document.getElementById('timeoutSlider').value);
+syncFollow();
+</script>
+{% endblock %}

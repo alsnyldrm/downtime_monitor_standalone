@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Kullanıcı Düzenle - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>Kullanıcı Düzenle: {{ target.username }}</h2>
+    <a href="/users" class="btn btn-sm">← Geri</a>
+</div>
+<div class="card" style="max-width:500px;">
+    <div class="card-body">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        <form method="post">
+            <div class="form-group">
+                <label>Kullanıcı Adı</label>
+                <input type="text" class="form-control" value="{{ target.username }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Ad Soyad</label>
+                <input type="text" name="display_name" class="form-control" value="{{ target.display_name or '' }}">
+            </div>
+            <div class="form-group">
+                <label>Rol</label>
+                <select name="role" class="form-control">
+                    {% for r in ['admin','editor','readonly'] %}
+                    <option value="{{ r }}" {% if target.role.value == r %}selected{% endif %}>{{ r|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" name="is_active" {% if target.is_active %}checked{% endif %}> Aktif
+                </label>
+            </div>
+            <div style="margin-top:16px;">
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

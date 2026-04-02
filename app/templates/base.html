@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="{% if user %}{{ user.theme }}{% else %}dark{% endif %}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FBU Downtime Monitor{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+    <link href="/static/css/style.css" rel="stylesheet">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% if user %}
+    <div class="app-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar{% if user.sidebar_pinned %} pinned{% endif %}" id="sidebar">
+            <div class="sidebar-header">
+                <img src="/static/img/fbu.png" alt="FBU" class="sidebar-logo">
+                <div class="sidebar-brand">
+                    <div class="sidebar-brand-title">FENERBAHÇE ÜNİVERSİTESİ</div>
+                    <div class="sidebar-brand-sub">Downtime Monitor</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-label">ANA MENÜ</div>
+                <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/monitors" class="nav-item {% if request.url.path.startswith('/monitors') %}active{% endif %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <span>Monitörler</span>
+                </a>
+                <a href="/groups" class="nav-item {% if request.url.path.startswith('/groups') %}active{% endif %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <span>Gruplar</span>
+                </a>
+
+                <div class="nav-section-label">AĞ ARAÇLARI</div>
+                <a href="/tools?t=dns" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t','dns')=='dns' %}active{% endif %}" onclick="sessionStorage.setItem('tool','dns')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>DNS Sorgu</span>
+                </a>
+                <a href="/tools?t=ping" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='ping' %}active{% endif %}" onclick="sessionStorage.setItem('tool','ping')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <span>Ping Testi</span>
+                </a>
+                <a href="/tools?t=port" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='port' %}active{% endif %}" onclick="sessionStorage.setItem('tool','port')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    <span>Port Tarama</span>
+                </a>
+                <a href="/tools?t=ssl" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='ssl' %}active{% endif %}" onclick="sessionStorage.setItem('tool','ssl')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>SSL Sertifika</span>
+                </a>
+                <a href="/tools?t=headers" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='headers' %}active{% endif %}" onclick="sessionStorage.setItem('tool','headers')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>HTTP Başlıkları</span>
+                </a>
+                <a href="/tools?t=traceroute" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='traceroute' %}active{% endif %}" onclick="sessionStorage.setItem('tool','traceroute')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                    <span>Traceroute</span>
+                </a>
+                <a href="/tools?t=whois" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='whois' %}active{% endif %}" onclick="sessionStorage.setItem('tool','whois')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <span>WHOIS Sorgu</span>
+                </a>
+                <a href="/tools?t=subnet" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='subnet' %}active{% endif %}" onclick="sessionStorage.setItem('tool','subnet')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                    <span>Subnet Hesap</span>
+                </a>
+                <a href="/tools?t=geoip" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='geoip' %}active{% endif %}" onclick="sessionStorage.setItem('tool','geoip')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>IP Geolokasyon</span>
+                </a>
+                <a href="/tools?t=rdns" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='rdns' %}active{% endif %}" onclick="sessionStorage.setItem('tool','rdns')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    <span>Reverse DNS</span>
+                </a>
+                <a href="/tools?t=banner" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='banner' %}active{% endif %}" onclick="sessionStorage.setItem('tool','banner')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <span>Banner Grab</span>
+                </a>
+                <a href="/tools?t=httpperf" class="nav-item {% if request.url.path.startswith('/tools') and request.query_params.get('t')=='httpperf' %}active{% endif %}" onclick="sessionStorage.setItem('tool','httpperf')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <span>HTTP Performans</span>
+                </a>
+
+                <div class="nav-section-label">RAPORLAR</div>
+                <a href="/reports" class="nav-item {% if request.url.path.startswith('/reports') %}active{% endif %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span>Raporlar</span>
+                </a>
+
+                {% if user.role.value == 'admin' %}
+                <div class="nav-section-label">YÖNETİM</div>
+                <a href="/users" class="nav-item {% if request.url.path.startswith('/users') %}active{% endif %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Kullanıcılar</span>
+                </a>
+                <a href="/notifications" class="nav-item {% if request.url.path.startswith('/notifications') %}active{% endif %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span>Push Bildirim</span>
+                </a>
+                {% endif %}
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-user-avatar">{{ (user.display_name or user.username)[0]|upper }}</div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-name">{{ user.display_name or user.username }}</div>
+                        <div class="sidebar-user-role">{{ user.role.value|upper }}</div>
+                    </div>
+                </div>
+                <div class="sidebar-footer-links">
+                    {% if user.auth_provider.value == 'local' %}
+                    <a href="/change-password" class="sidebar-footer-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <span>Şifre Değiştir</span>
+                    </a>
+                    {% endif %}
+                    <a href="/logout" class="sidebar-footer-link logout">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        <span>Çıkış</span>
+                    </a>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Tema Değiştir">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <span class="theme-label">Tema</span>
+                </button>
+                <button class="sidebar-pin" id="sidebarPin" onclick="toggleSidebarPin()" title="Sabitle/Aç">
+                    <svg class="pin-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    <svg class="pin-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="content"{% if user.sidebar_pinned %} style="margin-left:260px"{% endif %}>
+            <div class="content-inner">
+            {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% else %}
+    <div style="min-height:100vh;">
+        {% block login_content %}{% endblock %}
+    </div>
+    {% endif %}
+
+    <script src="/static/js/app.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

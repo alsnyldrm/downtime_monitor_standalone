@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Kullanıcılar - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>Kullanıcılar</h2>
+</div>
+{% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+<div class="card">
+    <div class="card-body" style="padding:0;">
+        <table class="table">
+            <thead>
+                <tr><th>Kullanıcı Adı</th><th>Ad Soyad</th><th>Email</th><th>Rol</th><th>Kaynak</th><th>Aktif</th><th>İşlem</th></tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td><strong>{{ u.username }}</strong></td>
+                    <td>{{ u.display_name or '-' }}</td>
+                    <td>{{ u.email or '-' }}</td>
+                    <td>
+                        {% if u.role.value == 'admin' %}<span class="badge badge-danger">Admin</span>
+                        {% elif u.role.value == 'editor' %}<span class="badge badge-warn">Editor</span>
+                        {% else %}<span class="badge badge-muted">Readonly</span>{% endif %}
+                    </td>
+                    <td><span class="badge {% if u.auth_provider.value == 'saml' %}badge-up{% else %}badge-muted{% endif %}">{{ u.auth_provider.value|upper }}</span></td>
+                    <td>{% if u.is_active %}<span class="dot dot-up"></span>{% else %}<span class="dot dot-down"></span>{% endif %}</td>
+                    <td>
+                        <a href="/users/{{ u.id }}/edit" class="btn btn-sm">Düzenle</a>
+                        {% if u.id != user.id %}
+                        <form method="post" action="/users/{{ u.id }}/delete" style="display:inline;" onsubmit="return confirm('Silmek istediğinize emin misiniz?')">
+                            <button class="btn btn-danger btn-sm">Sil</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
