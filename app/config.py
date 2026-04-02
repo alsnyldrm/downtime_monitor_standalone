@@ -43,7 +43,7 @@ SAML_SETTINGS = {
         "logoutRequestSigned": False,
         "logoutResponseSigned": False,
         "signMetadata": False,
-        "wantMessagesSigned": True,
+        "wantMessagesSigned": False,
         "wantAssertionsSigned": True,
         "wantNameId": True,
         "wantNameIdEncrypted": False,
