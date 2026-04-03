@@ -28,25 +28,25 @@
 
 <!-- 8 WIDGETS -->
 <div class="widget-grid">
-    <div class="widget">
+    <div class="widget widget-clickable" data-filter="all" title="Tümünü göster">
         <div class="widget-accent accent-blue"></div>
         <div class="widget-label">Toplam Monitör</div>
         <div class="widget-value">{{ total }}</div>
         <div class="widget-sub">Aktif takipte</div>
     </div>
-    <div class="widget">
+    <div class="widget widget-clickable" data-filter="up" title="Sadece UP monitörleri göster">
         <div class="widget-accent accent-up"></div>
         <div class="widget-label">Çalışıyor</div>
         <div class="widget-value" id="stat-up" style="color:#10b981;">{{ up_count }}</div>
         <div class="widget-sub">UP durumunda</div>
     </div>
-    <div class="widget">
+    <div class="widget widget-clickable" data-filter="down" title="Sadece DOWN monitörleri göster">
         <div class="widget-accent accent-down"></div>
         <div class="widget-label">Çalışmıyor</div>
         <div class="widget-value" id="stat-down" style="color:#ef4444;">{{ down_count }}</div>
         <div class="widget-sub">DOWN durumunda</div>
     </div>
-    <div class="widget">
+    <div class="widget widget-clickable" data-filter="paused" title="Duraklatılmış monitörleri göster">
         <div class="widget-accent accent-pause"></div>
         <div class="widget-label">Duraklatıldı</div>
         <div class="widget-value" style="color:#f59e0b;">{{ paused_count + pending_count }}</div>
@@ -58,7 +58,7 @@
         <div class="widget-value">{% if avg_rt %}{{ "%.0f"|format(avg_rt) }}<span style="font-size:14px;font-weight:400;">ms</span>{% else %}-{% endif %}</div>
         <div class="widget-sub">Son 24 saat (UP kontroller)</div>
     </div>
-    <div class="widget">
+    <div class="widget widget-clickable" data-filter="incidents" title="Aktif olayları göster">
         <div class="widget-accent accent-pink"></div>
         <div class="widget-label">Aktif Olaylar</div>
         <div class="widget-value" style="color:{% if active_incidents_count > 0 %}#ef4444{% else %}#10b981{% endif %};">{{ active_incidents_count }}</div>
@@ -81,16 +81,23 @@
 <!-- MONITOR LIST -->
 <div class="section-header">
     <h2 style="font-size:16px;">Monitörler</h2>
-    <span style="font-size:12px;color:var(--text-muted);">Son 50 kontrol gösteriliyor</span>
+    <div style="display:flex;align-items:center;gap:10px;">
+        <div class="dashboard-search-wrap">
+            <svg class="dashboard-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="monitorSearch" class="dashboard-search-input" placeholder="Monitör ara..." autocomplete="off">
+        </div>
+        <span class="filter-badge" id="activeFilterBadge" style="display:none;"></span>
+        <span style="font-size:12px;color:var(--text-muted);">Son 50 kontrol gösteriliyor</span>
+    </div>
 </div>
 
 {% if monitors|length == 0 %}
 <div class="card"><div class="empty-state">Henüz monitör eklenmedi. <a href="/monitors/new">Yeni monitör ekle</a></div></div>
 {% else %}
-<div class="monitor-list">
+<div class="monitor-list" id="monitorList">
     {% for item in monitors %}
     {% set m = item.monitor %}
-    <a href="/monitors/{{ m.id }}" class="monitor-row">
+    <a href="/monitors/{{ m.id }}" class="monitor-row" data-status="{{ m.status.value if m.status else 'pending' }}" data-name="{{ m.name|lower }}" data-url="{{ m.url|lower }}">
         <div class="monitor-status">
             <span class="dot dot-{{ m.status.value if m.status else 'pending' }}"></span>
         </div>
@@ -112,20 +119,32 @@
     </a>
     {% endfor %}
 </div>
+<div id="noMonitorResult" class="empty-state" style="display:none;padding:20px;">Sonuç bulunamadı</div>
 {% endif %}
 
 <!-- RECENT INCIDENTS -->
 {% if recent_incidents|length > 0 %}
 <div class="section-header" style="margin-top:24px;">
     <h2 style="font-size:16px;">Son Olaylar</h2>
+    <div style="display:flex;align-items:center;gap:10px;">
+        <div class="dashboard-search-wrap">
+            <svg class="dashboard-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="incidentSearch" class="dashboard-search-input" placeholder="Olay ara..." autocomplete="off">
+        </div>
+        <select id="incidentFilter" class="dashboard-filter-select">
+            <option value="all">Tümü</option>
+            <option value="active">Devam Eden</option>
+            <option value="resolved">Çözülen</option>
+        </select>
+    </div>
 </div>
 <div class="card">
     <div class="card-body" style="padding:0;overflow-x:auto;">
-        <table class="table">
+        <table class="table" id="incidentTable">
             <thead><tr><th>Monitör</th><th>Başlangıç</th><th>Bitiş</th><th>Süre</th><th>Sebep</th></tr></thead>
             <tbody>
                 {% for inc in recent_incidents %}
-                <tr>
+                <tr class="incident-row" data-monitor-id="{{ inc.monitor_id }}" data-status="{% if inc.ended_at %}resolved{% else %}active{% endif %}" data-name="{{ inc.monitor.name|lower if inc.monitor else '' }}" style="cursor:pointer;" onclick="window.location='/monitors/{{ inc.monitor_id }}'">
                     <td><strong>{{ inc.monitor.name if inc.monitor else '-' }}</strong></td>
                     <td>{{ inc.started_at|localtime('%d.%m.%Y %H:%M', user.timezone_offset) }}</td>
                     <td>{% if inc.ended_at %}{{ inc.ended_at|localtime('%d.%m.%Y %H:%M', user.timezone_offset) }}{% else %}<span class="badge badge-down">Devam Ediyor</span>{% endif %}</td>
@@ -135,6 +154,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        <div id="noIncidentResult" class="empty-state" style="display:none;padding:20px;">Sonuç bulunamadı</div>
     </div>
 </div>
 {% endif %}
@@ -166,6 +186,101 @@
     tick();
     setInterval(tick, 1000);
 })();
+
+// Widget filtreleme
+(function(){
+    var activeFilter = 'all';
+    var widgets = document.querySelectorAll('.widget-clickable');
+    var badge = document.getElementById('activeFilterBadge');
+    var filterLabels = {all:'Tümü',up:'Çalışıyor',down:'Çalışmıyor',paused:'Duraklatıldı',incidents:'Aktif Olaylar'};
+
+    widgets.forEach(function(w){
+        w.addEventListener('click', function(){
+            var filter = this.getAttribute('data-filter');
+            if(activeFilter === filter && filter !== 'all') {
+                activeFilter = 'all';
+            } else {
+                activeFilter = filter;
+            }
+            widgets.forEach(function(ww){ ww.classList.remove('widget-active'); });
+            if(activeFilter !== 'all'){
+                this.classList.add('widget-active');
+                badge.textContent = filterLabels[activeFilter] || activeFilter;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+            applyMonitorFilters();
+            if(activeFilter === 'incidents') {
+                var incSection = document.getElementById('incidentTable');
+                if(incSection) incSection.closest('.card').scrollIntoView({behavior:'smooth', block:'start'});
+            }
+        });
+    });
+
+    function applyMonitorFilters(){
+        var search = (document.getElementById('monitorSearch').value || '').toLowerCase();
+        var rows = document.querySelectorAll('#monitorList .monitor-row');
+        var visible = 0;
+        rows.forEach(function(row){
+            var status = row.getAttribute('data-status');
+            var name = row.getAttribute('data-name');
+            var url = row.getAttribute('data-url');
+            var matchFilter = activeFilter === 'all' ||
+                (activeFilter === 'up' && status === 'up') ||
+                (activeFilter === 'down' && status === 'down') ||
+                (activeFilter === 'paused' && (status === 'paused' || status === 'pending'));
+            var matchSearch = !search || name.indexOf(search) !== -1 || url.indexOf(search) !== -1;
+            if(matchFilter && matchSearch){
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        var noResult = document.getElementById('noMonitorResult');
+        if(noResult) noResult.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    // Monitör arama
+    var searchInput = document.getElementById('monitorSearch');
+    if(searchInput){
+        searchInput.addEventListener('input', applyMonitorFilters);
+    }
+
+    // Olay arama ve filtreleme
+    var incidentSearch = document.getElementById('incidentSearch');
+    var incidentFilter = document.getElementById('incidentFilter');
+
+    function applyIncidentFilters(){
+        var search = (incidentSearch ? incidentSearch.value : '').toLowerCase();
+        var filter = incidentFilter ? incidentFilter.value : 'all';
+        var rows = document.querySelectorAll('.incident-row');
+        var visible = 0;
+        rows.forEach(function(row){
+            var status = row.getAttribute('data-status');
+            var name = row.getAttribute('data-name');
+            var text = row.textContent.toLowerCase();
+            var matchFilter = filter === 'all' || status === filter;
+            var matchSearch = !search || name.indexOf(search) !== -1 || text.indexOf(search) !== -1;
+            if(matchFilter && matchSearch){
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        var noResult = document.getElementById('noIncidentResult');
+        if(noResult) noResult.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    if(incidentSearch) incidentSearch.addEventListener('input', applyIncidentFilters);
+    if(incidentFilter) incidentFilter.addEventListener('change', applyIncidentFilters);
+
+    // Expose for external use
+    window.applyMonitorFilters = applyMonitorFilters;
+})();
+
 // Auto-refresh status
 setInterval(async()=>{
     try{
