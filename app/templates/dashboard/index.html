@@ -214,6 +214,9 @@
             if(activeFilter === 'incidents') {
                 var incSection = document.getElementById('incidentTable');
                 if(incSection) incSection.closest('.card').scrollIntoView({behavior:'smooth', block:'start'});
+                if(incidentFilter) { incidentFilter.value = 'active'; applyIncidentFilters(); }
+            } else {
+                if(incidentFilter) { incidentFilter.value = 'all'; applyIncidentFilters(); }
             }
         });
     });
@@ -227,6 +230,7 @@
             var name = row.getAttribute('data-name');
             var url = row.getAttribute('data-url');
             var matchFilter = activeFilter === 'all' ||
+                activeFilter === 'incidents' ||
                 (activeFilter === 'up' && status === 'up') ||
                 (activeFilter === 'down' && status === 'down') ||
                 (activeFilter === 'paused' && (status === 'paused' || status === 'pending'));
