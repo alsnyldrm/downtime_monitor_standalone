@@ -30,6 +30,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     theme = Column(String(10), default="dark", nullable=False, server_default="dark")
     sidebar_pinned = Column(Boolean, default=True, nullable=False, server_default="1")
+    timezone_offset = Column(Integer, default=3, nullable=False, server_default="3")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

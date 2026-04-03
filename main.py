@@ -59,6 +59,11 @@ app.include_router(api_router)
 @app.on_event("startup")
 async def startup_event():
     Base.metadata.create_all(bind=engine)
+    # Alembic migration'ları çalıştır
+    from alembic.config import Config
+    from alembic import command
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
     # Local admin kullanıcıları devre dışı bırak
     db = SessionLocal()
     try:

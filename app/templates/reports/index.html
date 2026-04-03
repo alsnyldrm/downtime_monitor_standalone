@@ -153,8 +153,8 @@
                 {% for inc in recent_incidents %}
                 <tr>
                     <td><a href="/monitors/{{ inc.monitor_id }}"><strong>{{ inc.monitor.name if inc.monitor else '#' + inc.monitor_id|string }}</strong></a></td>
-                    <td>{{ inc.started_at|localtime('%d.%m.%Y %H:%M') }}</td>
-                    <td>{% if inc.ended_at %}{{ inc.ended_at|localtime('%d.%m.%Y %H:%M') }}{% else %}<span class="badge badge-down">Devam Ediyor</span>{% endif %}</td>
+                    <td>{{ inc.started_at|localtime('%d.%m.%Y %H:%M', user.timezone_offset) }}</td>
+                    <td>{% if inc.ended_at %}{{ inc.ended_at|localtime('%d.%m.%Y %H:%M', user.timezone_offset) }}{% else %}<span class="badge badge-down">Devam Ediyor</span>{% endif %}</td>
                     <td>{% if inc.duration_seconds %}{{ (inc.duration_seconds // 60) }}dk {{ (inc.duration_seconds % 60) }}sn{% else %}—{% endif %}</td>
                     <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);">{{ inc.reason or '—' }}</td>
                 </tr>

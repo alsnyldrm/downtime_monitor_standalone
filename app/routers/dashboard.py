@@ -102,6 +102,22 @@ async def set_sidebar(request: Request):
     return JSONResponse({"ok": True})
 
 
+@router.post("/api/preferences/timezone")
+async def set_timezone(request: Request):
+    user = require_login(request)
+    body = await request.json()
+    offset = body.get("timezone_offset", 3)
+    if not isinstance(offset, int) or offset < -12 or offset > 12:
+        return JSONResponse({"error": "Geçersiz saat dilimi"}, status_code=400)
+    db = SessionLocal()
+    try:
+        db.query(User).filter(User.id == user.id).update({"timezone_offset": offset})
+        db.commit()
+    finally:
+        db.close()
+    return JSONResponse({"ok": True})
+
+
 @router.get("/api/status", response_class=HTMLResponse)
 async def api_status(request: Request):
     from fastapi.responses import JSONResponse

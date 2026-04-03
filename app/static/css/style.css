@@ -103,6 +103,9 @@ a{color:var(--primary);text-decoration:none;}
 .theme-label{font-size:12px;}
 [data-theme="light"] .icon-moon{display:none;}
 [data-theme="dark"] .icon-sun{display:none;}
+.sidebar-tz-select{display:flex;align-items:center;gap:8px;padding:4px 12px;}
+.sidebar-tz-select select{background:var(--bg-sidebar);color:var(--sidebar-text);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;cursor:pointer;flex:1;}
+.sidebar-tz-select select:focus{outline:none;border-color:var(--accent);}
 
 /* === MAIN CONTENT === */
 .content{margin-left:60px;flex:1;padding:24px;min-height:100vh;transition:margin-left .25s cubic-bezier(.4,0,.2,1);}

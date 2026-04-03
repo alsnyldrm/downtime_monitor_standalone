@@ -125,6 +125,19 @@
                         <span>Çıkış</span>
                     </a>
                 </div>
+                <div class="sidebar-tz-select">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <select id="tzSelect" onchange="setTimezone(this.value)" title="Saat Dilimi">
+                        {% for tz_val, tz_label in [
+                            (-12,'UTC-12'),(-11,'UTC-11'),(-10,'UTC-10'),(-9,'UTC-9'),(-8,'UTC-8'),(-7,'UTC-7'),
+                            (-6,'UTC-6'),(-5,'UTC-5'),(-4,'UTC-4'),(-3,'UTC-3'),(-2,'UTC-2'),(-1,'UTC-1'),
+                            (0,'UTC+0'),(1,'UTC+1'),(2,'UTC+2'),(3,'UTC+3 (TR)'),(4,'UTC+4'),(5,'UTC+5'),
+                            (6,'UTC+6'),(7,'UTC+7'),(8,'UTC+8'),(9,'UTC+9'),(10,'UTC+10'),(11,'UTC+11'),(12,'UTC+12')
+                        ] %}
+                        <option value="{{ tz_val }}"{% if user.timezone_offset == tz_val %} selected{% endif %}>{{ tz_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <button class="theme-toggle" onclick="toggleTheme()" title="Tema Değiştir">
                     <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                     <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
