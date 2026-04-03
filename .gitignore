@@ -1,4 +1,25 @@
-.env
-__pycache__/
 *.pyc
+__pycache__/
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+.idea/
+.vscode/
+*.db
+venv/
+.venv/
 firebase-service-account.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker volumes
+docker/mysql_data/
+docker/certbot/
+docker/ssl/
