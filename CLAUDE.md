@@ -176,3 +176,5 @@ Yeni özellik/değişiklik yaparken:
 - [ ] Yeni env var → `config.py`'ye tanımla
 - [ ] Push bildirim → `firebase_helper.py` kullan
 - [ ] Değişiklik bitti → git commit + push + sunucuda pull + docker rebuild
+- [ ] Yapılan her değişiklik → `progress.md` dosyasına kaydet (tarih + açıklama)
+- [ ] `CLAUDE.md` güncellendiğinde → `README.md` dosyasını da güncelle ve senkron tut
