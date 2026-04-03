@@ -62,7 +62,15 @@ async def startup_event():
     # Alembic migration'ları çalıştır
     from alembic.config import Config
     from alembic import command
+    from alembic.runtime.migration import MigrationContext
     alembic_cfg = Config("alembic.ini")
+    with engine.connect() as conn:
+        ctx = MigrationContext.configure(conn)
+        current_rev = ctx.get_current_revision()
+        if current_rev is None:
+            # İlk defa: mevcut schema'yı 002'ye stamp'le (theme, sidebar, fcm_tokens zaten create_all'da var)
+            command.stamp(alembic_cfg, "002_fcm_tokens")
+    # Artık eksik migration'ları çalıştır (ör. 003_timezone_offset)
     command.upgrade(alembic_cfg, "head")
     # Local admin kullanıcıları devre dışı bırak
     db = SessionLocal()
