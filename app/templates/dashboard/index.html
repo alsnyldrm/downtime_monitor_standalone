@@ -79,6 +79,7 @@
 </div>
 
 <!-- MONITOR LIST -->
+<div id="monitorSection">
 <div class="section-header">
     <h2 style="font-size:16px;">Monitörler</h2>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -121,6 +122,7 @@
 </div>
 <div id="noMonitorResult" class="empty-state" style="display:none;padding:20px;">Sonuç bulunamadı</div>
 {% endif %}
+</div><!-- /monitorSection -->
 
 <!-- RECENT INCIDENTS -->
 {% if recent_incidents|length > 0 %}
@@ -210,12 +212,15 @@
             } else {
                 badge.style.display = 'none';
             }
-            applyMonitorFilters();
+            var monitorSection = document.getElementById('monitorSection');
             if(activeFilter === 'incidents') {
+                if(monitorSection) monitorSection.style.display = 'none';
+                if(incidentFilter) { incidentFilter.value = 'active'; applyIncidentFilters(); }
                 var incSection = document.getElementById('incidentTable');
                 if(incSection) incSection.closest('.card').scrollIntoView({behavior:'smooth', block:'start'});
-                if(incidentFilter) { incidentFilter.value = 'active'; applyIncidentFilters(); }
             } else {
+                if(monitorSection) monitorSection.style.display = '';
+                applyMonitorFilters();
                 if(incidentFilter) { incidentFilter.value = 'all'; applyIncidentFilters(); }
             }
         });
@@ -230,7 +235,6 @@
             var name = row.getAttribute('data-name');
             var url = row.getAttribute('data-url');
             var matchFilter = activeFilter === 'all' ||
-                activeFilter === 'incidents' ||
                 (activeFilter === 'up' && status === 'up') ||
                 (activeFilter === 'down' && status === 'down') ||
                 (activeFilter === 'paused' && (status === 'paused' || status === 'pending'));
