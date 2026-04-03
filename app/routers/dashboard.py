@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app import templates
 from app.dependencies import get_current_user, require_login
 from app.database import SessionLocal
@@ -102,20 +102,45 @@ async def set_sidebar(request: Request):
     return JSONResponse({"ok": True})
 
 
-@router.post("/api/preferences/timezone")
-async def set_timezone(request: Request):
+@router.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
     user = require_login(request)
-    body = await request.json()
-    offset = body.get("timezone_offset", 3)
-    if not isinstance(offset, int) or offset < -12 or offset > 12:
-        return JSONResponse({"error": "Geçersiz saat dilimi"}, status_code=400)
     db = SessionLocal()
     try:
-        db.query(User).filter(User.id == user.id).update({"timezone_offset": offset})
-        db.commit()
+        target = db.query(User).filter(User.id == user.id).first()
+        return templates.TemplateResponse("users/profile.html", {
+            "request": request, "user": user, "target": target, "success": None,
+        })
     finally:
         db.close()
-    return JSONResponse({"ok": True})
+
+
+@router.post("/profile")
+async def profile_update(
+    request: Request,
+    display_name: str = Form(None),
+    timezone_offset: str = Form("3"),
+):
+    user = require_login(request)
+    try:
+        tz_val = float(timezone_offset)
+    except (ValueError, TypeError):
+        tz_val = 3.0
+    tz_val = max(-12.0, min(12.0, tz_val))
+    db = SessionLocal()
+    try:
+        target = db.query(User).filter(User.id == user.id).first()
+        if display_name and display_name.strip():
+            target.display_name = display_name.strip()
+        target.timezone_offset = tz_val
+        db.commit()
+        db.refresh(target)
+        return templates.TemplateResponse("users/profile.html", {
+            "request": request, "user": target, "target": target,
+            "success": "Profiliniz güncellendi.",
+        })
+    finally:
+        db.close()
 
 
 @router.get("/api/status", response_class=HTMLResponse)

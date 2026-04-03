@@ -8,6 +8,24 @@
     {% endif %}
 </div>
 
+<!-- LIVE CLOCK -->
+<div class="dashboard-clock-card">
+    <div class="clock-inner">
+        <div class="clock-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="clock-content">
+            <div class="clock-datetime">
+                <span class="clock-date" id="clockDate"></span>
+                <span class="clock-sep">/</span>
+                <span class="clock-time" id="clockTime"></span>
+                <span class="clock-tz-badge" id="clockTzBadge"></span>
+            </div>
+            <div class="clock-day" id="clockDay"></div>
+        </div>
+    </div>
+</div>
+
 <!-- 8 WIDGETS -->
 <div class="widget-grid">
     <div class="widget">
@@ -123,6 +141,32 @@
 {% endblock %}
 {% block scripts %}
 <script>
+// Live clock
+(function(){
+    var offset = {{ user.timezone_offset }};
+    var days = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+    var months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    var tzSign = offset >= 0 ? '+' : '';
+    var tzLabel = 'UTC' + tzSign + (offset % 1 === 0 ? offset : offset.toFixed(1).replace('.',':').replace(':5',':30'));
+    document.getElementById('clockTzBadge').textContent = tzLabel;
+    function tick(){
+        var now = new Date();
+        var utc = now.getTime() + now.getTimezoneOffset() * 60000;
+        var local = new Date(utc + offset * 3600000);
+        var dd = String(local.getDate()).padStart(2,'0');
+        var mm = String(local.getMonth()+1).padStart(2,'0');
+        var yyyy = local.getFullYear();
+        document.getElementById('clockDate').textContent = dd + '.' + mm + '.' + yyyy;
+        var hh = String(local.getHours()).padStart(2,'0');
+        var mi = String(local.getMinutes()).padStart(2,'0');
+        var ss = String(local.getSeconds()).padStart(2,'0');
+        document.getElementById('clockTime').textContent = hh + ':' + mi + ':' + ss;
+        document.getElementById('clockDay').textContent = days[local.getDay()] + ', ' + local.getDate() + ' ' + months[local.getMonth()] + ' ' + yyyy;
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+// Auto-refresh status
 setInterval(async()=>{
     try{
         const r=await fetch('/api/status');

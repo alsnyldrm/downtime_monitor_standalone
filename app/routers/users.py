@@ -4,7 +4,7 @@ from app import templates
 from sqlalchemy.orm import Session
 from passlib.hash import bcrypt
 from app.database import get_db, SessionLocal
-from app.dependencies import require_admin
+from app.dependencies import require_admin, require_login
 from app.models.user import User, UserRole, AuthProvider
 
 router = APIRouter(prefix="/users")

@@ -16,7 +16,7 @@ depends_on = None
 def upgrade():
     op.add_column(
         "users",
-        sa.Column("timezone_offset", sa.Integer(), nullable=False, server_default="3"),
+        sa.Column("timezone_offset", sa.Float(), nullable=False, server_default="3"),
     )
 
 

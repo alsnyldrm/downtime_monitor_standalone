@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Profilim - FBU Downtime Monitor{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h2>Profilim</h2>
+</div>
+
+<div class="profile-grid">
+    <!-- Profil Bilgileri -->
+    <div class="card profile-card">
+        <div class="card-body">
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-lg">{{ (target.display_name or target.username)[0]|upper }}</div>
+                <div>
+                    <h3 style="margin:0;color:var(--text);">{{ target.display_name or target.username }}</h3>
+                    <span class="badge badge-{{ 'up' if target.role.value == 'admin' else 'pause' }}">{{ target.role.value|upper }}</span>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        {{ target.email or '-' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ayarlar Formu -->
+    <div class="card">
+        <div class="card-body">
+            <h3 style="margin:0 0 20px;font-size:16px;color:var(--text);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;">
+                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Tercihler
+            </h3>
+            {% if success %}<div class="alert alert-success" style="margin-bottom:16px;">{{ success }}</div>{% endif %}
+            <form method="post">
+                <div class="form-group">
+                    <label>Ad Soyad</label>
+                    <input type="text" name="display_name" class="form-control" value="{{ target.display_name or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Saat Dilimi</label>
+                    <select name="timezone_offset" class="form-control">
+                        {% for tz_val, tz_label in [
+                            (-12,'UTC-12 (Baker Island)'),(-11,'UTC-11 (Samoa)'),(-10,'UTC-10 (Hawaii)'),
+                            (-9,'UTC-9 (Alaska)'),(-8,'UTC-8 (Los Angeles)'),(-7,'UTC-7 (Denver)'),
+                            (-6,'UTC-6 (Chicago)'),(-5,'UTC-5 (New York)'),(-4,'UTC-4 (Santiago)'),
+                            (-3,'UTC-3 (São Paulo)'),(-2,'UTC-2 (Fernando de Noronha)'),(-1,'UTC-1 (Azores)'),
+                            (0,'UTC+0 (Londra)'), (1,'UTC+1 (Paris, Berlin)'), (2,'UTC+2 (Atina, Kahire)'),
+                            (3,'UTC+3 (İstanbul, Moskova)'), (4,'UTC+4 (Dubai)'), (5,'UTC+5 (Karaçi)'),
+                            (5.5,'UTC+5:30 (Mumbai)'), (6,'UTC+6 (Dakka)'), (7,'UTC+7 (Bangkok)'),
+                            (8,'UTC+8 (Singapur, Pekin)'), (9,'UTC+9 (Tokyo)'), (10,'UTC+10 (Sidney)'),
+                            (11,'UTC+11 (Solomon)'), (12,'UTC+12 (Auckland)')
+                        ] %}
+                        <option value="{{ tz_val }}"{% if target.timezone_offset == tz_val %} selected{% endif %}>{{ tz_label }}</option>
+                        {% endfor %}
+                    </select>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+                        Tüm saat gösterimleri bu dilime göre hesaplanır
+                    </div>
+                </div>
+                <div style="margin-top:20px;">
+                    <button type="submit" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.profile-grid{display:grid;grid-template-columns:1fr;gap:20px;max-width:600px;}
+.profile-avatar-section{display:flex;align-items:center;gap:16px;}
+.profile-avatar-lg{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0;}
+.alert-success{background:rgba(16,185,129,.12);color:#10b981;padding:10px 14px;border-radius:8px;font-size:13px;border:1px solid rgba(16,185,129,.25);}
+</style>
+{% endblock %}

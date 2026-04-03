@@ -17,12 +17,6 @@ function toggleSidebarPin(){
     fetch('/api/preferences/sidebar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pinned:pinned})});
 }
 
-// Timezone select — save to DB & reload
-function setTimezone(val){
-    fetch('/api/preferences/timezone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({timezone_offset:parseInt(val)})})
-    .then(function(){ location.reload(); });
-}
-
 // Login toggle
 function toggleLogin(){
     var f=document.getElementById('localLoginForm');

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SAEnum, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.database import Base
@@ -30,7 +30,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     theme = Column(String(10), default="dark", nullable=False, server_default="dark")
     sidebar_pinned = Column(Boolean, default=True, nullable=False, server_default="1")
-    timezone_offset = Column(Integer, default=3, nullable=False, server_default="3")
+    timezone_offset = Column(Float, default=3.0, nullable=False, server_default="3")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

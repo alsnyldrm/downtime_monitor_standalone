@@ -112,6 +112,44 @@ a{color:var(--primary);text-decoration:none;}
 .sidebar.pinned~.content{margin-left:260px;}
 .content-inner{max-width:1200px;margin:0 auto;}
 
+/* === DASHBOARD CLOCK === */
+.dashboard-clock-card{
+    background:linear-gradient(135deg, var(--bg-card) 0%, rgba(99,102,241,.08) 100%);
+    border:1px solid var(--border);border-radius:14px;padding:18px 24px;margin-bottom:20px;
+    display:flex;align-items:center;position:relative;overflow:hidden;
+}
+.dashboard-clock-card::before{
+    content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;
+    border-radius:50%;background:rgba(99,102,241,.06);pointer-events:none;
+}
+.dashboard-clock-card::after{
+    content:'';position:absolute;bottom:-30px;right:60px;width:80px;height:80px;
+    border-radius:50%;background:rgba(16,185,129,.04);pointer-events:none;
+}
+.clock-inner{display:flex;align-items:center;gap:16px;width:100%;position:relative;z-index:1;}
+.clock-icon-wrap{
+    width:48px;height:48px;border-radius:12px;flex-shrink:0;
+    background:linear-gradient(135deg,#6366f1,#818cf8);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 12px rgba(99,102,241,.25);
+}
+.clock-icon-wrap svg{width:24px;height:24px;stroke:#fff;}
+.clock-content{flex:1;min-width:0;}
+.clock-datetime{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.clock-date{font-size:22px;font-weight:700;color:var(--text);letter-spacing:.5px;font-variant-numeric:tabular-nums;}
+.clock-sep{color:var(--text-muted);font-size:18px;font-weight:300;}
+.clock-time{font-size:22px;font-weight:700;color:var(--accent);letter-spacing:1px;font-variant-numeric:tabular-nums;}
+.clock-tz-badge{
+    font-size:10px;font-weight:600;letter-spacing:.5px;color:#6366f1;
+    background:rgba(99,102,241,.12);border-radius:6px;padding:2px 8px;
+    line-height:1.6;white-space:nowrap;
+}
+.clock-day{font-size:13px;color:var(--text-muted);margin-top:2px;font-weight:500;}
+@media(max-width:600px){
+    .clock-date,.clock-time{font-size:16px;}
+    .dashboard-clock-card{padding:14px 16px;}
+}
+
 /* === PAGE HEADER === */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .section-header h2{font-size:20px;font-weight:700;color:var(--text);}
