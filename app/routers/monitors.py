@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from app import templates
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from app.database import get_db, SessionLocal
@@ -11,7 +11,6 @@ from app.models.incident import Incident
 from app.models.monitor_group import MonitorGroup
 
 router = APIRouter(prefix="/monitors")
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)

@@ -8,12 +8,11 @@ from datetime import datetime
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from app import templates
 
 from app.dependencies import require_login
 
 router = APIRouter(prefix="/tools")
-templates = Jinja2Templates(directory="app/templates")
 
 # ---------- güvenlik: hostname/IP doğrulama ----------
 _HOST_RE = re.compile(

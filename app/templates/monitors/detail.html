@@ -47,7 +47,7 @@
     <div class="stat-card">
         <div class="stat-label">Son Kontrol</div>
         {% if monitor.last_checked_at %}
-        <div style="font-size:18px;font-weight:600;">{{ monitor.last_checked_at.strftime('%H:%M:%S') }}</div>
+        <div style="font-size:18px;font-weight:600;">{{ monitor.last_checked_at|localtime('%H:%M:%S') }}</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">{{ monitor.interval }}s aralıkla</div>
         {% else %}
         <div style="font-size:18px;color:var(--text-muted);">-</div>
@@ -113,7 +113,7 @@
                 <tbody>
                     {% for log in logs %}
                     <tr>
-                        <td style="font-size:12px;">{{ log.checked_at.strftime('%d.%m %H:%M:%S') }}</td>
+                        <td style="font-size:12px;">{{ log.checked_at|localtime }}</td>
                         <td>{% if log.status.value == 'up' %}<span class="badge badge-up">UP</span>{% else %}<span class="badge badge-down">DOWN</span>{% endif %}</td>
                         <td>{{ "%.0f"|format(log.response_time or 0) }}ms</td>
                         <td style="color:var(--text-muted);">{{ log.status_code or '-' }}</td>
@@ -141,7 +141,7 @@
                     <tr>
                         <td>{% if inc.ended_at %}<span class="badge badge-up" style="font-size:10px;">Çözüldü</span>{% else %}<span class="badge badge-down" style="font-size:10px;">Devam</span>{% endif %}</td>
                         <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-muted);">{{ (inc.reason or '-')[:40] }}</td>
-                        <td style="font-size:12px;">{{ inc.started_at.strftime('%d.%m %H:%M') }}</td>
+                        <td style="font-size:12px;">{{ inc.started_at|localtime('%d.%m %H:%M') }}</td>
                         <td style="font-size:12px;">{% if inc.duration_seconds %}{% if inc.duration_seconds >= 3600 %}{{ inc.duration_seconds // 3600 }}sa {{ (inc.duration_seconds % 3600) // 60 }}dk{% else %}{{ inc.duration_seconds // 60 }}dk {{ inc.duration_seconds % 60 }}sn{% endif %}{% else %}-{% endif %}</td>
                     </tr>
                     {% endfor %}

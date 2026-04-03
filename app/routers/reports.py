@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
-from fastapi.templating import Jinja2Templates
+from app import templates
 from app.dependencies import require_login
 from app.database import SessionLocal
 from app.models.monitor import Monitor, MonitorStatus
@@ -12,7 +12,6 @@ import csv
 import io
 
 router = APIRouter(prefix="/reports")
-templates = Jinja2Templates(directory="app/templates")
 
 
 def _db_now():

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from app import templates
 from app.dependencies import get_current_user, require_login
 from app.database import SessionLocal
 from app.models.monitor import Monitor, MonitorStatus
@@ -11,7 +11,6 @@ from sqlalchemy import func
 from datetime import datetime, timezone, timedelta
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/", response_class=HTMLResponse)

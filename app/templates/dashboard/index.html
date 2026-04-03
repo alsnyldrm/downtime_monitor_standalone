@@ -88,7 +88,7 @@
         </div>
         <div class="monitor-heartbeat">
             {% for log in item.logs[-50:] %}
-            <div class="hb-pip {% if log.status.value == 'up' %}hb-up{% else %}hb-down{% endif %}" title="{{ log.checked_at.strftime('%H:%M') }}: {{ log.status.value }}"></div>
+            <div class="hb-pip {% if log.status.value == 'up' %}hb-up{% else %}hb-down{% endif %}" title="{{ log.checked_at|localtime('%H:%M') }}: {{ log.status.value }}"></div>
             {% endfor %}
         </div>
     </a>
@@ -109,8 +109,8 @@
                 {% for inc in recent_incidents %}
                 <tr>
                     <td><strong>{{ inc.monitor.name if inc.monitor else '-' }}</strong></td>
-                    <td>{{ inc.started_at.strftime('%d.%m.%Y %H:%M') }}</td>
-                    <td>{% if inc.ended_at %}{{ inc.ended_at.strftime('%d.%m.%Y %H:%M') }}{% else %}<span class="badge badge-down">Devam Ediyor</span>{% endif %}</td>
+                    <td>{{ inc.started_at|localtime('%d.%m.%Y %H:%M') }}</td>
+                    <td>{% if inc.ended_at %}{{ inc.ended_at|localtime('%d.%m.%Y %H:%M') }}{% else %}<span class="badge badge-down">Devam Ediyor</span>{% endif %}</td>
                     <td>{% if inc.duration_seconds %}{{ (inc.duration_seconds // 60) }}dk{% else %}-{% endif %}</td>
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);">{{ (inc.reason or '-')[:80] }}</td>
                 </tr>

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 import jwt as pyjwt
 from app.database import get_db
+from app import templates
 from app.dependencies import get_current_user
 from app.models.user import User, AuthProvider, UserRole
 from app.saml_helper import prepare_saml_request, fetch_idp_certificate
@@ -15,7 +15,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 72
